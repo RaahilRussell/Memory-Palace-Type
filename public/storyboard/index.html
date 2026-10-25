@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Memory Palace · Motion studies</title>
+  <style>
+    :root{font-family:system-ui,sans-serif;color:#344334;background:#f6f3ea;font-synthesis:none}*{box-sizing:border-box}body{margin:0}a{color:inherit;text-underline-offset:4px}button{font:inherit;cursor:pointer}button:focus-visible,a:focus-visible{outline:2px solid #53634e;outline-offset:5px}header{max-width:1440px;margin:auto;padding:28px 5%;display:flex;justify-content:space-between;align-items:center;font-size:13px}.mark{font-size:20px;letter-spacing:-1px}main{max-width:1440px;padding:30px 5% 60px;margin:auto}.intro{display:flex;justify-content:space-between;gap:30px;align-items:end;margin-bottom:26px}h1{font-family:Georgia,serif;font-weight:400;font-size:clamp(36px,5vw,66px);line-height:1.04;letter-spacing:-2px;margin:0}p{line-height:1.65} .intro p{max-width:330px;margin:0;color:#667060;font-size:14px}.layout{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:30px}.stage{position:relative;aspect-ratio:1.6;border:1px solid #fff;border-radius:18px;overflow:hidden;box-shadow:0 20px 70px #4e593012;background:#dcded1}.stage img{position:absolute;width:100%;height:100%;object-fit:contain;inset:0;opacity:0;transition:opacity .45s ease}.stage img.active{opacity:1}.transport{display:flex;align-items:center;gap:10px;margin:18px 0}.transport button{border:1px solid #d7ddce;background:transparent;border-radius:30px;min-height:44px;padding:10px 18px}.transport #play{background:#53634e;color:#fffaf0;border-color:#53634e;min-width:90px}.transport span{margin-left:auto;font-size:12px;color:#667060}.steps{display:flex;flex-direction:column;gap:10px}.step{text-align:left;border:1px solid transparent;background:transparent;border-radius:12px;padding:17px 18px;display:grid;grid-template-columns:24px 1fr;gap:10px;color:#65705e;min-height:66px}.step[aria-current="step"]{background:#e6ebdf;border-color:#d6dfcb;color:#344334}.step small{display:block;font-size:12px;font-weight:400;margin-top:6px;line-height:1.45}.step strong{font-size:15px;font-weight:500}.detail{font-size:13px;line-height:1.7;min-height:68px;color:#65705e}.note{border-top:1px solid #dce1d3;padding-top:18px;font-size:12px;line-height:1.7;color:#667060}.downloads{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;margin-top:20px}.tag{font-size:11px;letter-spacing:1px;text-transform:uppercase;margin-bottom:16px;color:#6d7866}@media(max-width:850px){.layout{grid-template-columns:1fr}.steps{display:grid;grid-template-columns:1fr 1fr}.intro{display:block}.intro p{margin-top:20px;max-width:500px}main{padding-top:12px}.transport span{display:none}}@media(prefers-reduced-motion:reduce){.stage img{transition:none}}
+  </style>
+</head>
+<body>
+<header><span class="mark">Memory Palace ✳</span><a href="/lobby/">Open the lobby ↗</a></header>
+<main>
+  <div class="tag">Figma storyboard · Motion proposal</div>
+  <div class="intro"><h1>A moment.<br>A little closer.</h1><p>Start in the lobby. Arrive, notice, open, return. A study in light and attention, with the viewer’s point of view held still.</p></div>
+  <div class="layout">
+    <section aria-label="Animated storyboard">
+      <div class="stage" aria-label="Storyboard frame">
+        <img class="active" src="05-lobby.svg" alt="A separate lobby with Enter the room, Find a moment, Saved, and Design in Figma">
+        <img src="01-room.svg" alt="Sunlit room with floating photographs and four essential controls" aria-hidden="true">
+        <img src="02-aim.svg" alt="An aimed photograph grows slightly and shows Open" aria-hidden="true">
+        <img src="03-open.svg" alt="One photograph rests in focus while the surrounding photos fade" aria-hidden="true">
+        <img src="04-return.svg" alt="Returning restores the original room composition" aria-hidden="true">
+      </div>
+      <div class="transport"><button id="play" aria-pressed="false">Play</button><button id="restart">Restart</button><span>450 ms dissolve · no camera movement</span></div>
+      <p class="detail" id="detail" aria-live="polite">Choose the room or browse your moments. The lobby carries the navigation; the window room keeps its existing interface. The dissolve into the room is a proposal; the working lobby uses page navigation.</p>
+    </section>
+    <aside>
+      <div class="steps" aria-label="Storyboard steps">
+        <button class="step" aria-current="step" data-step="0"><span>01</span><strong>Choose<small>A clear place to begin.</small></strong></button>
+        <button class="step" data-step="1"><span>02</span><strong>Arrive<small>Light, space, photographs.</small></strong></button>
+        <button class="step" data-step="2"><span>03</span><strong>Notice<small>The target gently settles.</small></strong></button>
+        <button class="step" data-step="3"><span>04</span><strong>Open<small>One moment gets your attention.</small></strong></button>
+        <button class="step" data-step="4"><span>05</span><strong>Return<small>The room is where you left it.</small></strong></button>
+      </div>
+      <p class="note">A 2D motion study, using six of the 29 supplied frames. The working room uses all 29. Opening currently previews a photograph; a reconstructed memory is a separate integration.</p>
+      <div class="downloads"><a href="05-lobby.svg" download>Lobby SVG ↓</a><a href="01-room.svg" download>Room SVG ↓</a><a href="02-aim.svg" download>Aim SVG ↓</a><a href="03-open.svg" download>Open SVG ↓</a><a href="04-return.svg" download>Return SVG ↓</a></div>
+      <p class="note">Import the SVGs into Figma Design, wrap each in a frame, and wire them with Dissolve. For editable motion, turn the memory window into a component and use matching layer names with Smart Animate. See the accompanying workflow guide.</p>
+    </aside>
+  </div>
+  <section style="margin-top:46px;border-top:1px solid #dce1d3;padding-top:26px" aria-labelledby="collection-flow">
+    <h2 id="collection-flow" style="font-family:Georgia,serif;font-weight:400;font-size:32px">Another useful loop: keep a moment close.</h2>
+    <p style="font-size:13px;color:#667060">Browse → save → revisit. These importable layouts show the collection’s rest, saved, and empty states. Six sample thumbnails illustrate the grid; the working collection contains all 29. Favorites persist in this browser and do not filter the window room.</p>
+    <div class="steps" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:20px">
+      <a href="06-moments.svg" download><img src="06-moments.svg" alt="Collection with sample photos and Save buttons" style="width:100%;border-radius:12px"><span>Browse · Figma SVG ↓</span></a>
+      <a href="07-saved.svg" download><img src="07-saved.svg" alt="Saved collection with two favorite moments" style="width:100%;border-radius:12px"><span>Saved · Figma SVG ↓</span></a>
+      <a href="08-empty.svg" download><img src="08-empty.svg" alt="Empty favorites with a Browse all moments recovery action" style="width:100%;border-radius:12px"><span>Empty · Figma SVG ↓</span></a>
+    </div>
+  </section>
+</main>
+<script>
+const slides=[...document.querySelectorAll('.stage img')],steps=[...document.querySelectorAll('.step')],play=document.querySelector('#play');
+const descriptions=['Choose the room or browse your moments. The lobby carries the navigation; the window room keeps its existing interface. The dissolve into the room is a proposal; the working lobby uses page navigation.','The photos carry the scene. Only Drift, Sound, Add moments, and Enter the room remain visible.','A 3.5% emphasis and the Open cue acknowledge intent. In the working room, aiming also slows that window’s motion.','A 450 ms dissolve gives the selected photo priority. The room fades back and stays still. No zooming or flying the viewer forward.','Restore the room with a short dissolve. The working app currently closes immediately; this return transition is a proposed refinement.'];
+let current=0,timer=null;
+function stop(){clearInterval(timer);timer=null;play.textContent='Play';play.setAttribute('aria-pressed','false')}
+function show(index){current=index;slides.forEach((el,i)=>{el.classList.toggle('active',i===index);el.setAttribute('aria-hidden',String(i!==index))});steps.forEach((el,i)=>{if(i===index)el.setAttribute('aria-current','step');else el.removeAttribute('aria-current')});document.querySelector('#detail').textContent=descriptions[index]}
+steps.forEach(el=>el.addEventListener('click',()=>{stop();show(Number(el.dataset.step))}));
+play.addEventListener('click',()=>{if(timer)return stop();if(current===slides.length-1)show(0);play.textContent='Pause';play.setAttribute('aria-pressed','true');timer=setInterval(()=>{show(current+1);if(current===slides.length-1)stop()},2200)});
+document.querySelector('#restart').addEventListener('click',()=>{stop();show(0)});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)stop()});
+</script>
+</body>
+</html>

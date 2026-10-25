@@ -1,0 +1,373 @@
+diff --git a/src/tests/hello_xr/build.gradle b/src/tests/hello_xr/build.gradle
+index fb2efce..31fe5f2 100644
+--- a/src/tests/hello_xr/build.gradle
++++ b/src/tests/hello_xr/build.gradle
+@@ -16,15 +16,16 @@ apply from: file('../../version.gradle')
+ 
+ android {
+     compileSdk 34
+-    ndkVersion "23.2.8568313"
++    ndkVersion "27.0.12077973"
+     buildToolsVersion = "34.0.0"
+-    namespace 'org.khronos.openxr.hello_xr'
++    namespace 'com.againmemoir.venue'
+ 
+     defaultConfig {
+-        applicationId "org.khronos.openxr.hello_xr"
++        ndk { abiFilters "arm64-v8a" }
++        applicationId "com.againmemoir.venue"
+         // for Vulkan, need at least 24
+         minSdkVersion 24
+-        targetSdkVersion 34
++        targetSdkVersion 32
+ 
+         versionName = project.versionOpenXR.toString() + project.versionQualifier
+         versionCode = project.versionOpenXR.getVersionCode()
+@@ -73,7 +74,7 @@ android {
+             applicationIdSuffix '.opengles'
+             externalNativeBuild.cmake.arguments += '-DHELLOXR_DEFAULT_GRAPHICS_PLUGIN=OpenGLES'
+ 
+-            resValue "string", "app_name", "Hello XR (OpenGL ES)"
++            resValue "string", "app_name", "Cal Hacks Venue"
+         }
+         Vulkan {
+             dimension 'api'
+diff --git a/src/tests/hello_xr/graphicsplugin_opengles.cpp b/src/tests/hello_xr/graphicsplugin_opengles.cpp
+index 157831e..dcf5a5f 100644
+--- a/src/tests/hello_xr/graphicsplugin_opengles.cpp
++++ b/src/tests/hello_xr/graphicsplugin_opengles.cpp
+@@ -10,6 +10,16 @@
+ 
+ #ifdef XR_USE_GRAPHICS_API_OPENGL_ES
+ 
++#ifdef XR_USE_PLATFORM_ANDROID
++#include <android/asset_manager.h>
++#define STB_IMAGE_IMPLEMENTATION
++#pragma clang diagnostic push
++#pragma clang diagnostic ignored "-Wimplicit-fallthrough"
++#include "venue_stb_image.h"
++#pragma clang diagnostic pop
++extern AAssetManager* gVenueAssetManager;
++#endif
++#include <sstream>
+ #include "common/gfxwrapper_opengl.h"
+ #include <common/xr_linear.h>
+ 
+@@ -33,14 +43,17 @@ static const char* VertexShaderGlsl = R"_(#version 310 es
+ 
+     in vec3 VertexPos;
+     in vec3 VertexColor;
++    in vec2 VertexUv;
+ 
+     out vec3 PSVertexColor;
++    out vec2 PSVertexUv;
+ 
+     uniform mat4 ModelViewProjection;
+ 
+     void main() {
+        gl_Position = ModelViewProjection * vec4(VertexPos, 1.0);
+        PSVertexColor = VertexColor;
++       PSVertexUv = VertexUv;
+     }
+     )_";
+ 
+@@ -48,10 +61,13 @@ static const char* VertexShaderGlsl = R"_(#version 310 es
+ static const char* FragmentShaderGlsl = R"_(#version 310 es
+ 
+     in lowp vec3 PSVertexColor;
++    in highp vec2 PSVertexUv;
+     out lowp vec4 FragColor;
++    uniform int UseVenueTexture;
++    uniform sampler2D VenueTexture;
+ 
+     void main() {
+-       FragColor = vec4(PSVertexColor, 1);
++       FragColor = UseVenueTexture == 1 ? texture(VenueTexture, PSVertexUv) : vec4(PSVertexColor, 1);
+     }
+     )_";
+ 
+@@ -79,6 +95,10 @@ struct OpenGLESGraphicsPlugin : public IGraphicsPlugin {
+         if (m_cubeIndexBuffer != 0) {
+             glDeleteBuffers(1, &m_cubeIndexBuffer);
+         }
++#ifdef XR_USE_PLATFORM_ANDROID
++        if (m_venueVertexBuffer != 0) glDeleteBuffers(1, &m_venueVertexBuffer);
++        if (m_venueTexture != 0) glDeleteTextures(1, &m_venueTexture);
++#endif
+ 
+         ksGpuWindow_Destroy(&window);
+     }
+@@ -169,6 +189,9 @@ struct OpenGLESGraphicsPlugin : public IGraphicsPlugin {
+ 
+         m_vertexAttribCoords = glGetAttribLocation(m_program, "VertexPos");
+         m_vertexAttribColor = glGetAttribLocation(m_program, "VertexColor");
++        m_vertexAttribUv = glGetAttribLocation(m_program, "VertexUv");
++        m_venueTextureUniform = glGetUniformLocation(m_program, "VenueTexture");
++        m_useVenueTextureUniform = glGetUniformLocation(m_program, "UseVenueTexture");
+ 
+         glGenBuffers(1, &m_cubeVertexBuffer);
+         glBindBuffer(GL_ARRAY_BUFFER, m_cubeVertexBuffer);
+@@ -187,8 +210,92 @@ struct OpenGLESGraphicsPlugin : public IGraphicsPlugin {
+         glVertexAttribPointer(m_vertexAttribCoords, 3, GL_FLOAT, GL_FALSE, sizeof(Geometry::Vertex), nullptr);
+         glVertexAttribPointer(m_vertexAttribColor, 3, GL_FLOAT, GL_FALSE, sizeof(Geometry::Vertex),
+                               reinterpret_cast<const void*>(sizeof(XrVector3f)));
++
++#ifdef XR_USE_PLATFORM_ANDROID
++        LoadVenue();
++#endif
+     }
+ 
++#ifdef XR_USE_PLATFORM_ANDROID
++    struct VenueVertex { float position[3]; float uv[2]; };
++
++    std::string ReadAsset(const char* name) {
++        AAsset* asset = AAssetManager_open(gVenueAssetManager, name, AASSET_MODE_BUFFER);
++        if (!asset) THROW(Fmt("Missing bundled venue asset: %s", name));
++        const size_t length = static_cast<size_t>(AAsset_getLength64(asset));
++        std::string bytes(length, '\0');
++        const int read = AAsset_read(asset, bytes.data(), length);
++        AAsset_close(asset);
++        if (read < 0 || static_cast<size_t>(read) != length) THROW(Fmt("Could not read bundled venue asset: %s", name));
++        return bytes;
++    }
++
++    void LoadVenue() {
++        const std::string obj = ReadAsset("venue.obj");
++        std::vector<std::array<float, 3>> positions;
++        std::vector<std::array<float, 2>> uvs;
++        std::vector<VenueVertex> vertices;
++        std::istringstream lines(obj);
++        std::string line;
++        const float axisX = 0.9833f, axisZ = 0.182f;
++        const float angle = std::atan2(axisZ, axisX) - 1.57079632679f;
++        const float c = std::cos(angle), s = std::sin(angle);
++        const float spawnX = axisX * 12.0f + (-axisZ) * -3.5f;
++        const float spawnZ = axisZ * 12.0f + axisX * -3.5f;
++        auto indexOf = [](int index, size_t count) -> size_t { return index > 0 ? static_cast<size_t>(index - 1) : static_cast<size_t>(static_cast<int>(count) + index); };
++        while (std::getline(lines, line)) {
++            std::istringstream row(line);
++            std::string kind; row >> kind;
++            if (kind == "v") {
++                std::array<float, 3> p{}; row >> p[0] >> p[1] >> p[2]; positions.push_back(p);
++            } else if (kind == "vt") {
++                std::array<float, 2> uv{}; row >> uv[0] >> uv[1]; uvs.push_back(uv);
++            } else if (kind == "f") {
++                std::vector<std::pair<size_t, size_t>> face;
++                std::string token;
++                while (row >> token) {
++                    const size_t slash = token.find('/');
++                    const size_t next = slash == std::string::npos ? slash : token.find('/', slash + 1);
++                    const int vi = std::stoi(token.substr(0, slash));
++                    const int ti = slash == std::string::npos || slash + 1 == next ? 0 : std::stoi(token.substr(slash + 1, next - slash - 1));
++                    if (positions.empty() || (ti != 0 && uvs.empty())) continue;
++                    face.emplace_back(indexOf(vi, positions.size()), ti == 0 ? 0 : indexOf(ti, uvs.size()));
++                }
++                auto append = [&](const std::pair<size_t, size_t>& ref) {
++                    const auto& p = positions.at(ref.first);
++                    const auto uv = ref.second < uvs.size() ? uvs[ref.second] : std::array<float, 2>{0, 0};
++                    VenueVertex v{};
++                    v.position[0] = c * (p[0] - spawnX) + s * (p[2] - spawnZ);
++                    v.position[1] = p[1] - 1.9f;
++                    v.position[2] = -s * (p[0] - spawnX) + c * (p[2] - spawnZ);
++                    v.uv[0] = uv[0]; v.uv[1] = uv[1]; vertices.push_back(v);
++                };
++                for (size_t i = 1; i + 1 < face.size(); ++i) { append(face[0]); append(face[i]); append(face[i + 1]); }
++            }
++        }
++        if (vertices.empty()) THROW("The bundled venue mesh contains no textured triangles.");
++        m_venueVertexCount = static_cast<GLsizei>(vertices.size());
++        glGenBuffers(1, &m_venueVertexBuffer);
++        glBindBuffer(GL_ARRAY_BUFFER, m_venueVertexBuffer);
++        glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(VenueVertex), vertices.data(), GL_STATIC_DRAW);
++
++        const std::string image = ReadAsset("venue.jpg");
++        int width = 0, height = 0, channels = 0;
++        unsigned char* pixels = stbi_load_from_memory(reinterpret_cast<const stbi_uc*>(image.data()), static_cast<int>(image.size()), &width, &height, &channels, STBI_rgb_alpha);
++        if (!pixels) THROW(Fmt("Could not decode bundled venue texture: %s", stbi_failure_reason()));
++        glGenTextures(1, &m_venueTexture);
++        glBindTexture(GL_TEXTURE_2D, m_venueTexture);
++        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
++        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
++        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
++        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
++        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
++        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
++        stbi_image_free(pixels);
++        Log::Write(Log::Level::Info, Fmt("Loaded static Cal Hacks venue (%d textured triangles)", m_venueVertexCount / 3));
++    }
++#endif
++
+     void CheckShader(GLuint shader) {
+         GLint r = 0;
+         glGetShaderiv(shader, GL_COMPILE_STATUS, &r);
+@@ -380,6 +487,13 @@ struct OpenGLESGraphicsPlugin : public IGraphicsPlugin {
+ 
+         // Set cube primitive data.
+         glBindVertexArray(m_vao);
++        glBindBuffer(GL_ARRAY_BUFFER, m_cubeVertexBuffer);
++        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_cubeIndexBuffer);
++        glVertexAttribPointer(m_vertexAttribCoords, 3, GL_FLOAT, GL_FALSE, sizeof(Geometry::Vertex), nullptr);
++        glVertexAttribPointer(m_vertexAttribColor, 3, GL_FLOAT, GL_FALSE, sizeof(Geometry::Vertex),
++                              reinterpret_cast<const void*>(sizeof(XrVector3f)));
++        glDisableVertexAttribArray(m_vertexAttribUv);
++        glUniform1i(m_useVenueTextureUniform, 0);
+ 
+         // Render each cube
+         for (const Cube& cube : cubes) {
+@@ -394,6 +508,31 @@ struct OpenGLESGraphicsPlugin : public IGraphicsPlugin {
+             glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(ArraySize(Geometry::c_cubeIndices)), GL_UNSIGNED_SHORT, nullptr);
+         }
+ 
++#ifdef XR_USE_PLATFORM_ANDROID
++        if (m_venueVertexCount > 0) {
++            glBindBuffer(GL_ARRAY_BUFFER, m_venueVertexBuffer);
++            glEnableVertexAttribArray(m_vertexAttribCoords);
++            glEnableVertexAttribArray(m_vertexAttribUv);
++            glVertexAttrib3f(m_vertexAttribColor, 1.0f, 1.0f, 1.0f);
++            glVertexAttribPointer(m_vertexAttribCoords, 3, GL_FLOAT, GL_FALSE, sizeof(VenueVertex), nullptr);
++            glVertexAttribPointer(m_vertexAttribUv, 2, GL_FLOAT, GL_FALSE, sizeof(VenueVertex),
++                                  reinterpret_cast<const void*>(3 * sizeof(float)));
++            XrMatrix4x4f model;
++            XrMatrix4x4f_CreateIdentity(&model);
++            XrMatrix4x4f mvp;
++            XrMatrix4x4f_Multiply(&mvp, &vp, &model);
++            glUniformMatrix4fv(m_modelViewProjectionUniformLocation, 1, GL_FALSE, reinterpret_cast<const GLfloat*>(&mvp));
++            glUniform1i(m_useVenueTextureUniform, 1);
++            glUniform1i(m_venueTextureUniform, 0);
++            glActiveTexture(GL_TEXTURE0);
++            glBindTexture(GL_TEXTURE_2D, m_venueTexture);
++            glDisable(GL_CULL_FACE);
++            glDrawArrays(GL_TRIANGLES, 0, m_venueVertexCount);
++            glEnable(GL_CULL_FACE);
++            glUniform1i(m_useVenueTextureUniform, 0);
++        }
++#endif
++
+         glBindVertexArray(0);
+         glUseProgram(0);
+         glBindFramebuffer(GL_FRAMEBUFFER, 0);
+@@ -414,9 +553,17 @@ struct OpenGLESGraphicsPlugin : public IGraphicsPlugin {
+     GLint m_modelViewProjectionUniformLocation{0};
+     GLint m_vertexAttribCoords{0};
+     GLint m_vertexAttribColor{0};
++    GLint m_vertexAttribUv{-1};
++    GLint m_venueTextureUniform{-1};
++    GLint m_useVenueTextureUniform{-1};
+     GLuint m_vao{0};
+     GLuint m_cubeVertexBuffer{0};
+     GLuint m_cubeIndexBuffer{0};
++#ifdef XR_USE_PLATFORM_ANDROID
++    GLuint m_venueVertexBuffer{0};
++    GLuint m_venueTexture{0};
++    GLsizei m_venueVertexCount{0};
++#endif
+     GLint m_contextApiMajorVersion{0};
+     std::array<float, 4> m_clearColor;
+ };
+diff --git a/src/tests/hello_xr/main.cpp b/src/tests/hello_xr/main.cpp
+index 9676bb1..823e337 100644
+--- a/src/tests/hello_xr/main.cpp
++++ b/src/tests/hello_xr/main.cpp
+@@ -11,6 +11,11 @@
+ #include "openxr_program.h"
+ #include "openxr_program_spatial_containers.h"
+ 
++#ifdef XR_USE_PLATFORM_ANDROID
++#include <android/asset_manager.h>
++AAssetManager* gVenueAssetManager = nullptr;
++#endif
++
+ #if defined(_WIN32)
+ // Favor the high performance NVIDIA or AMD GPUs
+ extern "C" {
+@@ -204,6 +209,7 @@ static void app_handle_cmd(struct android_app* app, int32_t cmd) {
+  */
+ void android_main(struct android_app* app) {
+     try {
++        gVenueAssetManager = app->activity->assetManager;
+         JNIEnv* Env;
+         app->activity->vm->AttachCurrentThread(&Env, nullptr);
+ 
+@@ -268,7 +274,7 @@ void android_main(struct android_app* app) {
+                 // If the timeout is negative, waits indefinitely until an event appears.
+                 const int timeoutMilliseconds =
+                     (!appState.Resumed && !program->IsSessionRunning() && app->destroyRequested == 0) ? -1 : 0;
+-                if (ALooper_pollAll(timeoutMilliseconds, nullptr, &events, (void**)&source) < 0) {
++                if (ALooper_pollOnce(timeoutMilliseconds, nullptr, &events, (void**)&source) < 0) {
+                     break;
+                 }
+ 
+diff --git a/src/tests/hello_xr/openxr_program.cpp b/src/tests/hello_xr/openxr_program.cpp
+index 7f8bc65..76cbd68 100644
+--- a/src/tests/hello_xr/openxr_program.cpp
++++ b/src/tests/hello_xr/openxr_program.cpp
+@@ -292,19 +292,18 @@ struct OpenXrProgram : IOpenXrProgram {
+     }
+ 
+     std::array<float, 4> GetBackgroundClearColor() const override {
+-        static const std::array<float, 4> SlateGrey{{0.184313729f, 0.309803933f, 0.309803933f, 1.0f}};
+         static const std::array<float, 4> TransparentBlack{{0.0f, 0.0f, 0.0f, 0.0f}};
+         static const std::array<float, 4> Black{{0.0f, 0.0f, 0.0f, 1.0f}};
+ 
+         switch (m_blendMode) {
+             case XR_ENVIRONMENT_BLEND_MODE_OPAQUE:
+-                return SlateGrey;
++                return Black;
+             case XR_ENVIRONMENT_BLEND_MODE_ADDITIVE:
+                 return Black;
+             case XR_ENVIRONMENT_BLEND_MODE_ALPHA_BLEND:
+                 return TransparentBlack;
+             default:
+-                return SlateGrey;
++                return Black;
+         }
+     }
+ 
+@@ -1004,46 +1003,9 @@ struct OpenXrProgram : IOpenXrProgram {
+             depthInfos.resize(viewCountOutput);
+         }
+ 
+-        // For each locatable space that we want to visualize, render a 25cm cube.
++        // This static venue viewer has no controller marker geometry.
+         std::vector<Cube> cubes;
+ 
+-        for (XrSpace visualizedSpace : m_visualizedSpaces) {
+-            XrSpaceLocation spaceLocation{XR_TYPE_SPACE_LOCATION};
+-            res = xrLocateSpace(visualizedSpace, m_appSpace, predictedDisplayTime, &spaceLocation);
+-            CHECK_XRRESULT(res, "xrLocateSpace");
+-            if (XR_UNQUALIFIED_SUCCESS(res)) {
+-                if ((spaceLocation.locationFlags & XR_SPACE_LOCATION_POSITION_VALID_BIT) != 0 &&
+-                    (spaceLocation.locationFlags & XR_SPACE_LOCATION_ORIENTATION_VALID_BIT) != 0) {
+-                    cubes.push_back(Cube{spaceLocation.pose, {0.25f, 0.25f, 0.25f}});
+-                }
+-            } else {
+-                Log::Write(Log::Level::Verbose, Fmt("Unable to locate a visualized reference space in app space: %d", res));
+-            }
+-        }
+-
+-        // Render a 10cm cube scaled by grabAction for each hand. Note renderHand will only be
+-        // true when the application has focus.
+-        for (auto hand : {Side::LEFT, Side::RIGHT}) {
+-            XrSpaceLocation spaceLocation{XR_TYPE_SPACE_LOCATION};
+-            res = xrLocateSpace(m_input.handSpace[hand], m_appSpace, predictedDisplayTime, &spaceLocation);
+-            CHECK_XRRESULT(res, "xrLocateSpace");
+-            if (XR_UNQUALIFIED_SUCCESS(res)) {
+-                if ((spaceLocation.locationFlags & XR_SPACE_LOCATION_POSITION_VALID_BIT) != 0 &&
+-                    (spaceLocation.locationFlags & XR_SPACE_LOCATION_ORIENTATION_VALID_BIT) != 0) {
+-                    float scale = 0.1f * m_input.handScale[hand];
+-                    cubes.push_back(Cube{spaceLocation.pose, {scale, scale, scale}});
+-                }
+-            } else {
+-                // Tracking loss is expected when the hand is not active so only log a message
+-                // if the hand is active.
+-                if (m_input.handActive[hand] == XR_TRUE) {
+-                    const char* handName[] = {"left", "right"};
+-                    Log::Write(Log::Level::Verbose,
+-                               Fmt("Unable to locate %s hand action space in app space: %d", handName[hand], res));
+-                }
+-            }
+-        }
+-
+         // Render view to the appropriate part of the swapchain image.
+         for (uint32_t i = 0; i < viewCountOutput; i++) {
+             // Each view has a separate swapchain which is acquired, rendered to, and released.

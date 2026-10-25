@@ -1,0 +1,328 @@
+{
+  "created": "2026-10-25T11:15:40.686Z",
+  "variables": 16,
+  "componentSets": 5,
+  "variants": 14,
+  "sourcePanes": [
+    {
+      "id": "12:254",
+      "name": "Pane 01"
+    },
+    {
+      "id": "12:258",
+      "name": "Pane 02"
+    },
+    {
+      "id": "12:262",
+      "name": "Pane 03"
+    },
+    {
+      "id": "12:266",
+      "name": "Pane 04"
+    },
+    {
+      "id": "12:270",
+      "name": "Pane 05"
+    },
+    {
+      "id": "12:274",
+      "name": "Pane 06"
+    },
+    {
+      "id": "12:278",
+      "name": "Pane 07"
+    },
+    {
+      "id": "12:282",
+      "name": "Pane 08"
+    },
+    {
+      "id": "12:286",
+      "name": "Pane 09"
+    },
+    {
+      "id": "12:290",
+      "name": "Pane 10"
+    },
+    {
+      "id": "12:294",
+      "name": "Pane 11"
+    },
+    {
+      "id": "12:298",
+      "name": "Pane 12"
+    },
+    {
+      "id": "12:302",
+      "name": "Pane 13"
+    },
+    {
+      "id": "12:306",
+      "name": "Pane 14"
+    },
+    {
+      "id": "12:310",
+      "name": "Pane 15"
+    },
+    {
+      "id": "12:314",
+      "name": "Pane 16"
+    },
+    {
+      "id": "12:318",
+      "name": "Pane 17"
+    },
+    {
+      "id": "12:322",
+      "name": "Pane 18"
+    },
+    {
+      "id": "12:326",
+      "name": "Pane 19"
+    },
+    {
+      "id": "12:330",
+      "name": "Pane 20"
+    },
+    {
+      "id": "12:334",
+      "name": "Pane 21"
+    },
+    {
+      "id": "12:338",
+      "name": "Pane 22"
+    },
+    {
+      "id": "12:342",
+      "name": "Pane 23"
+    },
+    {
+      "id": "12:346",
+      "name": "Pane 24"
+    },
+    {
+      "id": "12:350",
+      "name": "Pane 25"
+    },
+    {
+      "id": "12:354",
+      "name": "Pane 26"
+    },
+    {
+      "id": "12:358",
+      "name": "Pane 27"
+    },
+    {
+      "id": "12:362",
+      "name": "Pane 28"
+    },
+    {
+      "id": "12:366",
+      "name": "Pane 29"
+    }
+  ],
+  "screens": {
+    "home": "25:755",
+    "moments": "25:803",
+    "saved": "25:1225",
+    "savedOriginal": "25:1243",
+    "empty": "25:1250",
+    "search": "25:1262",
+    "mobile": "25:1277",
+    "mobileMoments": "25:1288",
+    "mobileOriginal": "25:1301",
+    "mobileSaved": "25:1308",
+    "mobileEmpty": "25:1319",
+    "arrive": "25:1327",
+    "aim": "25:1339",
+    "open": "25:1351",
+    "return": "25:1363",
+    "reduced": "25:1375",
+    "handoff": "25:1387",
+    "detail0": "25:993",
+    "detail1": "25:1001",
+    "detail2": "25:1009",
+    "detail3": "25:1017",
+    "detail4": "25:1025",
+    "detail5": "25:1033",
+    "detail6": "25:1041",
+    "detail7": "25:1049",
+    "detail8": "25:1057",
+    "detail9": "25:1065",
+    "detail10": "25:1073",
+    "detail11": "25:1081",
+    "detail12": "25:1089",
+    "detail13": "25:1097",
+    "detail14": "25:1105",
+    "detail15": "25:1113",
+    "detail16": "25:1121",
+    "detail17": "25:1129",
+    "detail18": "25:1137",
+    "detail19": "25:1145",
+    "detail20": "25:1153",
+    "detail21": "25:1161",
+    "detail22": "25:1169",
+    "detail23": "25:1177",
+    "detail24": "25:1185",
+    "detail25": "25:1193",
+    "detail26": "25:1201",
+    "detail27": "25:1209",
+    "detail28": "25:1217",
+    "reducedOpen": "25:1560",
+    "reducedReturn": "25:1572"
+  },
+  "reactionCount": 151,
+  "sections": {
+    "foundations": "25:679",
+    "components": "25:680",
+    "product": "25:681"
+  },
+  "scope": "29 original viewers; representative Moment 01 save flow; mobile; motion; full instant reduced-motion loop; recovery",
+  "auditedAt": "2026-10-25T11:17:17.411Z",
+  "actual": {
+    "screens": 48,
+    "componentSets": 5,
+    "variants": 14,
+    "reactions": 188,
+    "boundNodes": 645,
+    "variables": 16
+  },
+  "propagation": {
+    "property": "MomentCard Default.cornerRadius",
+    "temporaryChange": "24 → 25",
+    "instancesChecked": 34,
+    "instancesUpdated": 34,
+    "restored": true,
+    "note": "Actual structural probe; no elapsed-time savings or human-usability improvement inferred."
+  },
+  "issues": [],
+  "tokens": {
+    "schema": "mneme.figma.tokens.v1",
+    "exportedAt": "2026-10-25T11:17:17.410Z",
+    "sourceFile": "L7mSgSraOzY5NM0Mx8nGUH",
+    "collectionId": "VariableCollectionId:25:662",
+    "modeId": "25:1",
+    "values": {
+      "color/Canvas": {
+        "id": "VariableID:25:663",
+        "type": "COLOR",
+        "value": {
+          "r": 0.9529411792755127,
+          "g": 0.9450980424880981,
+          "b": 0.9058823585510254,
+          "a": 1
+        }
+      },
+      "color/Paper": {
+        "id": "VariableID:25:664",
+        "type": "COLOR",
+        "value": {
+          "r": 1,
+          "g": 0.9803921580314636,
+          "b": 0.9411764740943909,
+          "a": 1
+        }
+      },
+      "color/Ink": {
+        "id": "VariableID:25:665",
+        "type": "COLOR",
+        "value": {
+          "r": 0.2235294133424759,
+          "g": 0.2666666805744171,
+          "b": 0.20000000298023224,
+          "a": 1
+        }
+      },
+      "color/Sage": {
+        "id": "VariableID:25:666",
+        "type": "COLOR",
+        "value": {
+          "r": 0.32549020648002625,
+          "g": 0.38823530077934265,
+          "b": 0.30588236451148987,
+          "a": 1
+        }
+      },
+      "color/Muted": {
+        "id": "VariableID:25:667",
+        "type": "COLOR",
+        "value": {
+          "r": 0.4313725531101227,
+          "g": 0.4588235318660736,
+          "b": 0.40392157435417175,
+          "a": 1
+        }
+      },
+      "color/Peach": {
+        "id": "VariableID:25:668",
+        "type": "COLOR",
+        "value": {
+          "r": 0.929411768913269,
+          "g": 0.8196078538894653,
+          "b": 0.7019608020782471,
+          "a": 1
+        }
+      },
+      "color/Sun": {
+        "id": "VariableID:25:669",
+        "type": "COLOR",
+        "value": {
+          "r": 0.9725490212440491,
+          "g": 0.8705882430076599,
+          "b": 0.6901960968971252,
+          "a": 1
+        }
+      },
+      "color/Line": {
+        "id": "VariableID:25:670",
+        "type": "COLOR",
+        "value": {
+          "r": 0.843137264251709,
+          "g": 0.8549019694328308,
+          "b": 0.8039215803146362,
+          "a": 1
+        }
+      },
+      "space8": {
+        "id": "VariableID:25:671",
+        "type": "FLOAT",
+        "value": 8
+      },
+      "space16": {
+        "id": "VariableID:25:672",
+        "type": "FLOAT",
+        "value": 16
+      },
+      "space24": {
+        "id": "VariableID:25:673",
+        "type": "FLOAT",
+        "value": 24
+      },
+      "space32": {
+        "id": "VariableID:25:674",
+        "type": "FLOAT",
+        "value": 32
+      },
+      "target44": {
+        "id": "VariableID:25:675",
+        "type": "FLOAT",
+        "value": 44
+      },
+      "radius24": {
+        "id": "VariableID:25:676",
+        "type": "FLOAT",
+        "value": 24
+      },
+      "motionHover": {
+        "id": "VariableID:25:677",
+        "type": "FLOAT",
+        "value": 180
+      },
+      "motionDissolve": {
+        "id": "VariableID:25:678",
+        "type": "FLOAT",
+        "value": 450
+      }
+    }
+  }
+}

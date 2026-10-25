@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f3f1e7">
+  <title>Memory Palace · Your lobby</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="sunlight" aria-hidden="true"></div>
+  <header class="header">
+    <a class="brand" href="#home" aria-label="Memory Palace lobby"><span class="brand-symbol" aria-hidden="true">✳</span> Memory Palace</a>
+    <nav aria-label="Lobby"><a href="#home" data-nav="home" aria-current="page">Your room</a><a href="#moments" data-nav="moments">Moments <span class="nav-count" data-moment-count>29</span></a></nav>
+    <a class="design-link" href="#design" data-nav="design"><span class="figma-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span><span>Design in Figma</span><span aria-hidden="true">↗</span></a>
+  </header>
+  <main id="main" tabindex="-1">
+    <section id="home" class="view" aria-labelledby="home-title">
+      <div class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow"><span class="status-dot"></span> YOUR LOBBY</p>
+          <h1 id="home-title">A little closer<br>to <em>then.</em></h1>
+          <p class="intro">Your people. Your places.<br>A room full of moments to return to.</p>
+          <a class="button primary" href="/room/">Enter the room <span aria-hidden="true">↗</span></a>
+          <p class="room-meta" role="status"><span class="status-dot"></span><span id="room-status">Finding your moments…</span></p>
+          <div class="library-actions"><a class="text-link" href="/library/?import=1">Add moments <span aria-hidden="true">+</span></a><a class="text-link" href="/library/">Open library <span aria-hidden="true">↗</span></a></div>
+        </div>
+        <div class="room-preview" aria-label="A preview of the sunlit room with floating sample photographs">
+          <div class="arch" aria-hidden="true"></div><div class="orbit" aria-hidden="true"></div>
+          <img class="floating photo-a" src="/images/memories/Pane%2001.png" alt="" fetchpriority="high">
+          <img class="floating photo-b" src="/images/memories/Pane%2014.png" alt="">
+          <img class="floating photo-c" src="/images/memories/Pane%2020.png" alt="">
+          <img class="floating photo-d" src="/images/memories/Pane%2026.png" alt="">
+          <div class="preview-label"><span class="little-window" aria-hidden="true">◫</span> The memory room <span>01</span></div>
+        </div>
+      </div>
+      <div class="lobby-bottom">
+        <a class="destination" href="#moments"><span class="destination-icon" aria-hidden="true">▦</span><span><strong>Find a moment</strong><small id="browse-summary">Explore the sample collection.</small></span><span aria-hidden="true">↗</span></a>
+        <a class="destination" href="#saved"><span class="destination-icon" aria-hidden="true">♡</span><span><strong>Keep a few close</strong><small id="saved-summary">Your favorites, saved here.</small></span><span aria-hidden="true">↗</span></a>
+        <div class="device-note"><span aria-hidden="true">◎</span><p>Made for a still point of view.<br><span>Explore on screen or enter with Quest 2.</span></p></div>
+      </div>
+    </section>
+    <section id="moments" class="view" hidden aria-labelledby="moments-title">
+      <div class="view-heading"><div><p class="eyebrow">YOUR COLLECTION</p><h1 id="moments-title">The little things.</h1></div><a class="button primary" href="/room/">Enter the room <span aria-hidden="true">↗</span></a></div>
+      <div class="collection-toolbar"><div class="filters" role="group" aria-label="Filter moments"><button id="all-filter" aria-pressed="true">All moments <span data-moment-count>29</span></button><button id="saved-filter" aria-pressed="false">Saved <span id="saved-count">0</span></button></div><label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Find a moment" aria-label="Find a moment by name or number"></label></div>
+      <p class="collection-note" id="collection-note">29 sample moments · Select a photo to see its original.</p>
+      <div id="memory-grid" class="memory-grid"></div>
+      <div id="empty" class="empty" hidden><span aria-hidden="true">♡</span><h2 id="empty-title">Keep a moment close.</h2><p id="empty-copy">Tap a heart on any photo. Your favorites stay in this browser.</p><button id="reset-filter" class="button secondary">Browse all moments ↗</button></div>
+    </section>
+    <section id="design" class="view" hidden aria-labelledby="design-title">
+      <div class="view-heading"><div><p class="eyebrow"><span class="figma-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span> THE DESIGN BEHIND THE ROOM</p><h1 id="design-title">From frame to feeling.</h1></div><a class="button primary" href="https://www.figma.com/design/L7mSgSraOzY5NM0Mx8nGUH/Again-%E2%80%94-Product-design?node-id=25-755" target="_blank" rel="noopener noreferrer">Open Figma file ↗</a></div>
+      <p class="design-intro">A place for the choices, the interactions, and the handoff.</p>
+      <div class="design-feature"><div class="design-story"><p class="eyebrow">01 / CONTENT INTO SPACE</p><h2>29 Figma frames.<br>One room to remember.</h2><p>29 supplied image exports bring the sample room to life. Add your own moments to make the room yours.</p><a href="/room/?template=1" class="text-link">Preview the template <span>↗</span></a></div><div class="design-photos" aria-hidden="true"><img src="/images/memories/Pane%2005.png" alt=""><img src="/images/memories/Pane%2009.png" alt=""></div></div>
+      <div class="design-cards">
+        <article><p class="eyebrow">02 / INTERACTION</p><h2>One quiet loop.</h2><div class="flow"><span>Lobby</span><b>→</b><span>Aim</span><b>→</b><span>Open</span><b>→</b><span>Return</span></div><p>Preview the journey with gentle dissolves and a still point of view.</p><a class="text-link" href="/storyboard/index.html">Play the storyboard <span>↗</span></a></article>
+        <article><p class="eyebrow">03 / REUSABLE STATES</p><h2>Small actions. Clear feedback.</h2><div class="state-samples"><span class="state-rest">♡ Save</span><span class="state-saved">♥ Saved</span><span class="color-dot sage" title="Sage"></span><span class="color-dot cream" title="Warm ivory"></span><span class="color-dot peach" title="Soft peach"></span></div><p>Rest, focus, saved, and empty states make the collection easy to find your way through.</p><a class="text-link" href="https://www.figma.com/proto/L7mSgSraOzY5NM0Mx8nGUH/Again?node-id=25-755&amp;starting-point-node-id=25-755" target="_blank" rel="noopener noreferrer">Try the Figma prototype <span>↗</span></a></article>
+      </div>
+      <div class="design-footnote"><p><strong>Designed to carry through.</strong> Shared Figma components connect browsing, saving, and returning. The lobby’s colors, touch targets, and hover timing come from the same Figma variables.</p><a href="https://www.figma.com/slides/hyPJeXoDGDhZ687G4GjLX9/Again-%E2%80%94-Cal-Hacks-submission?node-id=7-4" target="_blank" rel="noopener noreferrer">Figma Slides ↗</a></div>
+    </section>
+  </main>
+  <footer class="footer"><span>Small moments. A place to keep them.</span><span id="location-label">LOBBY / 01</span></footer>
+  <dialog id="photo-dialog" aria-labelledby="photo-title"><div class="dialog-top"><span class="eyebrow">A MOMENT CLOSER</span><button class="icon-button" id="close-photo" aria-label="Close photo">×</button></div><img id="original-photo" alt=""><div class="dialog-bottom"><h2 id="photo-title"></h2><div class="dialog-actions"><button id="save-photo" class="button secondary" aria-pressed="false">♡ Save moment</button><a id="enter-memory" class="button primary" hidden>Step inside <span aria-hidden="true">↗</span></a></div></div><p id="photo-caption">Figma sample · Add your own moments to step inside them.</p></dialog>
+  <div id="notice" role="status" class="notice"></div>
+  <script type="module" src="/src/palace/lobby.js"></script>
+</body>
+</html>

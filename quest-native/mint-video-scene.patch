@@ -1,0 +1,713 @@
+--- a/src/tests/hello_xr/build.gradle
++++ b/src/tests/hello_xr/build.gradle
+@@ -18,17 +18,17 @@
+     compileSdk 34
+     ndkVersion "27.0.12077973"
+     buildToolsVersion = "34.0.0"
+-    namespace 'com.againmemoir.venue'
++    namespace 'com.againmemoir.minttoss'
+ 
+     defaultConfig {
+         ndk { abiFilters "arm64-v8a" }
+-        applicationId "com.againmemoir.venue"
++        applicationId "com.againmemoir.minttoss"
+         // for Vulkan, need at least 24
+         minSdkVersion 24
+         targetSdkVersion 32
+ 
+-        versionName = project.versionOpenXR.toString() + project.versionQualifier
+-        versionCode = project.versionOpenXR.getVersionCode()
++        versionName = "${project.versionOpenXR.major}.${project.versionOpenXR.minor}.${project.versionOpenXR.patch + 2}"
++        versionCode = project.versionOpenXR.getVersionCode() + 2
+ 
+         externalNativeBuild {
+             cmake {
+@@ -45,6 +45,7 @@
+         main {
+             manifest.srcFile 'AndroidManifest.xml'
+             res.srcDir 'android_resources'
++            assets.srcDir 'mint_assets'
+         }
+         Vulkan {
+             res.srcDir 'android_resources/vulkan'
+@@ -74,7 +75,7 @@
+             applicationIdSuffix '.opengles'
+             externalNativeBuild.cmake.arguments += '-DHELLOXR_DEFAULT_GRAPHICS_PLUGIN=OpenGLES'
+ 
+-            resValue "string", "app_name", "Cal Hacks Venue"
++            resValue "string", "app_name", "Mint Toss Demo v3"
+         }
+         Vulkan {
+             dimension 'api'
+--- a/src/tests/hello_xr/graphicsplugin.h
++++ b/src/tests/hello_xr/graphicsplugin.h
+@@ -57,6 +57,9 @@
+     virtual void RenderView(const XrCompositionLayerProjectionView& layerView, const XrSwapchainImageBaseHeader* swapchainImage,
+                             int64_t swapchainFormat, const std::vector<Cube>& cubes) = 0;
+ 
++    // Advance scene playback once per OpenXR frame so all stereo views share the same content time.
++    virtual void SetPlaybackTime(XrTime) {}
++
+     // Get recommended number of sub-data element samples in view (recommendedSwapchainSampleCount)
+     // if supported by the graphics plugin. A supported value otherwise.
+     virtual uint32_t GetSupportedSwapchainSampleCount(const XrViewConfigurationView& view) {
+--- a/src/tests/hello_xr/graphicsplugin_opengles.cpp
++++ b/src/tests/hello_xr/graphicsplugin_opengles.cpp
+@@ -9,6 +9,11 @@
+ #include "graphics_plugin_impl_helpers.h"
+ 
+ #ifdef XR_USE_GRAPHICS_API_OPENGL_ES
++
++#include <algorithm>
++#include <cmath>
++#include <cstring>
++#include <limits>
+ 
+ #ifdef XR_USE_PLATFORM_ANDROID
+ #include <android/asset_manager.h>
+@@ -44,9 +49,12 @@
+     in vec3 VertexPos;
+     in vec3 VertexColor;
+     in vec2 VertexUv;
++    in vec3 VertexNormal;
+ 
+     out vec3 PSVertexColor;
+     out vec2 PSVertexUv;
++    out highp vec3 PSWorldPosition;
++    out highp vec3 PSWorldNormal;
+ 
+     uniform mat4 ModelViewProjection;
+ 
+@@ -54,20 +62,48 @@
+        gl_Position = ModelViewProjection * vec4(VertexPos, 1.0);
+        PSVertexColor = VertexColor;
+        PSVertexUv = VertexUv;
++       PSWorldPosition = VertexPos;
++       PSWorldNormal = VertexNormal;
+     }
+     )_";
+ 
+ // The version statement has come on first line.
+ static const char* FragmentShaderGlsl = R"_(#version 310 es
++    precision highp float;
++    precision highp int;
+ 
+     in lowp vec3 PSVertexColor;
+     in highp vec2 PSVertexUv;
++    in highp vec3 PSWorldPosition;
++    in highp vec3 PSWorldNormal;
+     out lowp vec4 FragColor;
+     uniform int UseVenueTexture;
++    uniform int UseActorMask;
+     uniform sampler2D VenueTexture;
++    uniform float HumanTanHalfFov;
++    uniform float HumanAspect;
+ 
+     void main() {
+-       FragColor = UseVenueTexture == 1 ? texture(VenueTexture, PSVertexUv) : vec4(PSVertexColor, 1);
++       if (UseActorMask == 2) {
++           // Project the source camera's live frame onto the front of the full
++           // 3D body. The authored template's vertex colors remain visible on
++           // the sides and back, which cannot be recovered from one camera.
++           vec3 normal = normalize(PSWorldNormal);
++           vec3 towardCamera = normalize(-PSWorldPosition);
++           float facing = smoothstep(0.10, 0.66, max(dot(normal, towardCamera), 0.0));
++           float depth = max(-PSWorldPosition.z, 0.05);
++           vec2 photoUv = vec2(
++               0.5 + PSWorldPosition.x / (2.0 * depth * HumanTanHalfFov * HumanAspect),
++               0.5 - PSWorldPosition.y / (2.0 * depth * HumanTanHalfFov));
++           vec4 photo = texture(VenueTexture, photoUv);
++           if (facing > 0.45 && photo.a < 0.05) discard;
++           float photoWeight = facing * smoothstep(0.03, 0.24, photo.a);
++           FragColor = vec4(mix(PSVertexColor, photo.rgb, photoWeight), 1.0);
++           return;
++       }
++       vec4 color = UseVenueTexture == 1 ? texture(VenueTexture, PSVertexUv) : vec4(PSVertexColor, 1);
++       if (UseActorMask == 1 && color.a < 0.08) discard;
++       FragColor = color;
+     }
+     )_";
+ 
+@@ -98,6 +134,15 @@
+ #ifdef XR_USE_PLATFORM_ANDROID
+         if (m_venueVertexBuffer != 0) glDeleteBuffers(1, &m_venueVertexBuffer);
+         if (m_venueTexture != 0) glDeleteTextures(1, &m_venueTexture);
++        if (m_actorVertexBuffer != 0) glDeleteBuffers(1, &m_actorVertexBuffer);
++        if (m_actorIndexBuffer != 0) glDeleteBuffers(1, &m_actorIndexBuffer);
++        if (m_actorTexture != 0) glDeleteTextures(1, &m_actorTexture);
++        if (m_humanPositionBuffer != 0) glDeleteBuffers(1, &m_humanPositionBuffer);
++        if (m_humanColorBuffer != 0) glDeleteBuffers(1, &m_humanColorBuffer);
++        if (m_humanIndexBuffer != 0) glDeleteBuffers(1, &m_humanIndexBuffer);
++        if (m_humanNormalBuffer != 0) glDeleteBuffers(1, &m_humanNormalBuffer);
++        if (m_tinVertexBuffer != 0) glDeleteBuffers(1, &m_tinVertexBuffer);
++        if (m_tinTexture != 0) glDeleteTextures(1, &m_tinTexture);
+ #endif
+ 
+         ksGpuWindow_Destroy(&window);
+@@ -190,8 +235,12 @@
+         m_vertexAttribCoords = glGetAttribLocation(m_program, "VertexPos");
+         m_vertexAttribColor = glGetAttribLocation(m_program, "VertexColor");
+         m_vertexAttribUv = glGetAttribLocation(m_program, "VertexUv");
++        m_vertexAttribNormal = glGetAttribLocation(m_program, "VertexNormal");
+         m_venueTextureUniform = glGetUniformLocation(m_program, "VenueTexture");
+         m_useVenueTextureUniform = glGetUniformLocation(m_program, "UseVenueTexture");
++        m_useActorMaskUniform = glGetUniformLocation(m_program, "UseActorMask");
++        m_humanTanHalfFovUniform = glGetUniformLocation(m_program, "HumanTanHalfFov");
++        m_humanAspectUniform = glGetUniformLocation(m_program, "HumanAspect");
+ 
+         glGenBuffers(1, &m_cubeVertexBuffer);
+         glBindBuffer(GL_ARRAY_BUFFER, m_cubeVertexBuffer);
+@@ -212,12 +261,463 @@
+                               reinterpret_cast<const void*>(sizeof(XrVector3f)));
+ 
+ #ifdef XR_USE_PLATFORM_ANDROID
+-        LoadVenue();
++        AAsset* mintScene = AAssetManager_open(gVenueAssetManager, "mint.scene", AASSET_MODE_BUFFER);
++        if (mintScene) {
++            AAsset_close(mintScene);
++            LoadMintScene();
++        } else {
++            LoadVenue();
++        }
+ #endif
+     }
+ 
+ #ifdef XR_USE_PLATFORM_ANDROID
+     struct VenueVertex { float position[3]; float uv[2]; };
++    struct MintKeyframe { float time, u, v, depth, rx, ry, rz; bool visible; };
++
++    uint32_t ReadU32(const std::string& bytes, size_t& offset) {
++        if (offset + 4 > bytes.size()) THROW("The bundled Mint scene header is truncated.");
++        uint32_t value = 0;
++        std::memcpy(&value, bytes.data() + offset, sizeof(value));
++        offset += sizeof(value);
++        return value;
++    }
++
++    float ReadFloat(const std::string& bytes, size_t& offset) {
++        if (offset + 4 > bytes.size()) THROW("The bundled Mint scene header is truncated.");
++        float value = 0;
++        std::memcpy(&value, bytes.data() + offset, sizeof(value));
++        offset += sizeof(value);
++        return value;
++    }
++
++    GLuint LoadMintTexture(const char* name, bool alpha) {
++        const std::string image = ReadAsset(name);
++        int width = 0, height = 0, channels = 0;
++        unsigned char* pixels = stbi_load_from_memory(reinterpret_cast<const stbi_uc*>(image.data()), static_cast<int>(image.size()), &width, &height, &channels, STBI_rgb_alpha);
++        if (!pixels) THROW(Fmt("Could not decode Mint scene texture %s: %s", name, stbi_failure_reason()));
++        GLuint texture = 0;
++        glGenTextures(1, &texture);
++        glBindTexture(GL_TEXTURE_2D, texture);
++        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
++        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
++        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
++        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
++        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
++        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
++        stbi_image_free(pixels);
++        UNUSED_PARM(alpha);
++        return texture;
++    }
++
++    void BuildTinMesh() {
++        std::vector<VenueVertex> vertices;
++        constexpr int segments = 48;
++        const auto vertex = [](float x, float y, float z, float u, float v) {
++            return VenueVertex{{x, y, z}, {u, v}};
++        };
++        for (int i = 0; i < segments; ++i) {
++            const float a = 6.28318530718f * i / segments;
++            const float b = 6.28318530718f * (i + 1) / segments;
++            const float u0 = 0.5f + static_cast<float>(i) / segments * 0.5f;
++            const float u1 = 0.5f + static_cast<float>(i + 1) / segments * 0.5f;
++            const auto bottomA = vertex(std::cos(a), -0.5f, std::sin(a), u0, 0.96f);
++            const auto bottomB = vertex(std::cos(b), -0.5f, std::sin(b), u1, 0.96f);
++            const auto topA = vertex(std::cos(a), 0.5f, std::sin(a), u0, 0.04f);
++            const auto topB = vertex(std::cos(b), 0.5f, std::sin(b), u1, 0.04f);
++            vertices.insert(vertices.end(), {bottomA, bottomB, topB, bottomA, topB, topA});
++            const float x0 = std::cos(a), z0 = std::sin(a), x1 = std::cos(b), z1 = std::sin(b);
++            vertices.insert(vertices.end(), {
++                vertex(0, 0.5f, 0, 0.25f, 0.5f), vertex(x1, 0.5f, z1, 0.25f + x1 * 0.23f, 0.5f + z1 * 0.46f),
++                vertex(x0, 0.5f, z0, 0.25f + x0 * 0.23f, 0.5f + z0 * 0.46f),
++                vertex(0, -0.5f, 0, 0.25f, 0.5f), vertex(x0, -0.5f, z0, 0.25f + x0 * 0.23f, 0.5f + z0 * 0.46f),
++                vertex(x1, -0.5f, z1, 0.25f + x1 * 0.23f, 0.5f + z1 * 0.46f)
++            });
++        }
++        m_tinVertexCount = static_cast<GLsizei>(vertices.size());
++        glGenBuffers(1, &m_tinVertexBuffer);
++        glBindBuffer(GL_ARRAY_BUFFER, m_tinVertexBuffer);
++        glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(VenueVertex), vertices.data(), GL_STATIC_DRAW);
++    }
++
++    void LoadMintHuman() {
++        const std::string bytes = ReadAsset("human.mesh");
++        if (bytes.size() < 36 || bytes.compare(0, 4, "H3D2") != 0) THROW("The bundled 3D human mesh has an invalid header.");
++        size_t offset = 4;
++        m_humanVertexCount = ReadU32(bytes, offset);
++        m_humanIndexCount = ReadU32(bytes, offset);
++        m_humanFrameCount = ReadU32(bytes, offset);
++        m_humanFps = ReadU32(bytes, offset);
++        m_humanFrameInterval = ReadFloat(bytes, offset);
++        m_humanStartTime = ReadFloat(bytes, offset);
++        m_humanPositionScale = ReadU32(bytes, offset);
++        m_humanNormalScale = ReadU32(bytes, offset);
++        if (!m_humanVertexCount || !m_humanIndexCount || m_humanIndexCount % 3 || !m_humanFrameCount ||
++            !m_humanFps || m_humanFrameInterval <= 0 || m_humanPositionScale == 0 || m_humanNormalScale != 127 ||
++            m_humanVertexCount > 100000 || m_humanIndexCount > 600000 || m_humanFrameCount > 1000)
++            THROW("The bundled 3D human mesh dimensions or timing are invalid.");
++        const size_t colorBytes = static_cast<size_t>(m_humanVertexCount) * 3;
++        const size_t indexBytes = static_cast<size_t>(m_humanIndexCount) * sizeof(uint32_t);
++        const size_t frameBytes = static_cast<size_t>(m_humanVertexCount) * 3 * sizeof(int16_t);
++        const size_t normalFrameBytes = static_cast<size_t>(m_humanVertexCount) * 3 * sizeof(int8_t);
++        const size_t allFramesBytes = (frameBytes + normalFrameBytes) * m_humanFrameCount;
++        const size_t expected = offset + colorBytes + indexBytes + allFramesBytes;
++        if (expected != bytes.size()) THROW("The bundled 3D human mesh is truncated or has trailing bytes.");
++        m_humanColors.assign(bytes.begin() + offset, bytes.begin() + offset + colorBytes);
++        offset += colorBytes;
++        m_humanIndices.resize(m_humanIndexCount);
++        std::memcpy(m_humanIndices.data(), bytes.data() + offset, indexBytes);
++        offset += indexBytes;
++        for (uint32_t index : m_humanIndices) if (index >= m_humanVertexCount) THROW("The 3D human mesh has an invalid triangle index.");
++        m_humanFrameData.assign(bytes.data() + offset, bytes.data() + bytes.size());
++        m_humanPositions.resize(static_cast<size_t>(m_humanVertexCount) * 3);
++        m_humanPackedFrame.resize(m_humanPositions.size());
++        m_humanPackedNormals.resize(m_humanPositions.size());
++        glGenBuffers(1, &m_humanPositionBuffer);
++        glBindBuffer(GL_ARRAY_BUFFER, m_humanPositionBuffer);
++        glBufferData(GL_ARRAY_BUFFER, m_humanPositions.size() * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
++        glGenBuffers(1, &m_humanColorBuffer);
++        glBindBuffer(GL_ARRAY_BUFFER, m_humanColorBuffer);
++        glBufferData(GL_ARRAY_BUFFER, m_humanColors.size(), m_humanColors.data(), GL_STATIC_DRAW);
++        glGenBuffers(1, &m_humanNormalBuffer);
++        glBindBuffer(GL_ARRAY_BUFFER, m_humanNormalBuffer);
++        glBufferData(GL_ARRAY_BUFFER, m_humanPackedNormals.size(), nullptr, GL_DYNAMIC_DRAW);
++        glGenBuffers(1, &m_humanIndexBuffer);
++        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_humanIndexBuffer);
++        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexBytes, m_humanIndices.data(), GL_STATIC_DRAW);
++        m_humanLoaded = true;
++        UpdateMintHumanFrame(m_humanStartTime);
++        Log::Write(Log::Level::Info, Fmt("Loaded volumetric Mint human (%u vertices, %u triangles, %u baked poses).", m_humanVertexCount, m_humanIndexCount / 3, m_humanFrameCount));
++    }
++
++    void UpdateMintHumanFrame(float time) {
++        m_humanVisible = m_humanLoaded && time >= m_humanStartTime && time <= m_humanStartTime + (m_humanFrameCount - 1) * m_humanFrameInterval;
++        if (!m_humanVisible) return;
++        const uint32_t frameIndex = std::min(static_cast<uint32_t>(std::lround((time - m_humanStartTime) / m_humanFrameInterval)), m_humanFrameCount - 1);
++        if (frameIndex == m_lastHumanFrame) return;
++        const size_t frameStride = static_cast<size_t>(m_humanVertexCount) * 3 * sizeof(int16_t);
++        const size_t normalStride = static_cast<size_t>(m_humanVertexCount) * 3 * sizeof(int8_t);
++        const size_t positionFramesBytes = frameStride * m_humanFrameCount;
++        std::memcpy(m_humanPackedFrame.data(), m_humanFrameData.data() + frameStride * frameIndex, frameStride);
++        std::memcpy(m_humanPackedNormals.data(), m_humanFrameData.data() + positionFramesBytes + normalStride * frameIndex, normalStride);
++        const float invScale = 1.0f / m_humanPositionScale;
++        float nearestDepth = std::numeric_limits<float>::max();
++        float farthestDepth = 0.0f;
++        for (size_t i = 0; i < m_humanPositions.size(); i += 3) {
++            m_humanPositions[i] = m_humanPackedFrame[i] * invScale;
++            m_humanPositions[i + 1] = m_humanPackedFrame[i + 1] * invScale;
++            m_humanPositions[i + 2] = m_humanPackedFrame[i + 2] * invScale;
++            const float depth = -m_humanPositions[i + 2];
++            nearestDepth = std::min(nearestDepth, depth);
++            farthestDepth = std::max(farthestDepth, depth);
++        }
++        m_humanCenterDepth = (nearestDepth + farthestDepth) * 0.5f;
++        m_humanDepthSpan = std::clamp(farthestDepth - nearestDepth, 0.12f, 0.75f);
++        glBindBuffer(GL_ARRAY_BUFFER, m_humanPositionBuffer);
++        glBufferSubData(GL_ARRAY_BUFFER, 0, m_humanPositions.size() * sizeof(float), m_humanPositions.data());
++        glBindBuffer(GL_ARRAY_BUFFER, m_humanNormalBuffer);
++        glBufferSubData(GL_ARRAY_BUFFER, 0, m_humanPackedNormals.size(), m_humanPackedNormals.data());
++        m_lastHumanFrame = frameIndex;
++    }
++
++    void LoadMintScene() {
++        const std::string scene = ReadAsset("mint.scene");
++        if (scene.size() < 56 || scene.compare(0, 4, "M3D1") != 0) THROW("The bundled Mint scene has an invalid header.");
++        size_t offset = 4;
++        m_roomWidth = ReadU32(scene, offset); m_roomHeight = ReadU32(scene, offset);
++        m_actorWidth = ReadU32(scene, offset); m_actorHeight = ReadU32(scene, offset);
++        m_mintFrameCount = ReadU32(scene, offset); const uint32_t keyframeCount = ReadU32(scene, offset);
++        m_sceneNear = ReadFloat(scene, offset); m_sceneFar = ReadFloat(scene, offset);
++        m_sceneFov = ReadFloat(scene, offset); m_sceneStrength = ReadFloat(scene, offset);
++        m_sceneDuration = ReadFloat(scene, offset); m_tinRadius = ReadFloat(scene, offset); m_tinThickness = ReadFloat(scene, offset);
++        if (!m_roomWidth || !m_roomHeight || !m_actorWidth || !m_actorHeight || !m_mintFrameCount || m_mintFrameCount > 2000 || !keyframeCount || keyframeCount > 128 || m_sceneNear <= 0 || m_sceneFar <= m_sceneNear || m_sceneFov <= 0 || m_sceneDuration <= 0)
++            THROW("The bundled Mint scene dimensions or timing are invalid.");
++        m_actorTimes.resize(m_mintFrameCount);
++        for (float& time : m_actorTimes) time = ReadFloat(scene, offset);
++        m_tinFrames.resize(keyframeCount);
++        for (MintKeyframe& frame : m_tinFrames) {
++            frame.time = ReadFloat(scene, offset); frame.u = ReadFloat(scene, offset); frame.v = ReadFloat(scene, offset);
++            frame.depth = ReadFloat(scene, offset); frame.rx = ReadFloat(scene, offset); frame.ry = ReadFloat(scene, offset); frame.rz = ReadFloat(scene, offset);
++            frame.depth = std::max(0.28f, frame.depth * 0.62f);
++            frame.visible = ReadU32(scene, offset) != 0; ReadU32(scene, offset);
++        }
++        if (offset != scene.size()) THROW("The bundled Mint scene has trailing data.");
++        m_sceneAspect = static_cast<float>(m_actorWidth * 2) / static_cast<float>(m_actorHeight * 2);
++
++        const std::string depthBytes = ReadAsset("room-depth.png");
++        int depthWidth = 0, depthHeight = 0, depthChannels = 0;
++        unsigned char* depthPixels = stbi_load_from_memory(reinterpret_cast<const stbi_uc*>(depthBytes.data()), static_cast<int>(depthBytes.size()), &depthWidth, &depthHeight, &depthChannels, STBI_rgb_alpha);
++        if (!depthPixels || depthWidth != static_cast<int>(m_roomWidth) || depthHeight != static_cast<int>(m_roomHeight)) THROW("The Mint room depth map does not match its scene header.");
++        const size_t roomCount = static_cast<size_t>(m_roomWidth) * m_roomHeight;
++        std::vector<VenueVertex> roomVertices;
++        m_roomGrid.resize(roomCount);
++        std::vector<float> distances(roomCount);
++        const float halfHeight = std::tan(m_sceneFov * 0.00872664626f);
++        for (uint32_t y = 0; y < m_roomHeight; ++y) for (uint32_t x = 0; x < m_roomWidth; ++x) {
++            const size_t i = static_cast<size_t>(y) * m_roomWidth + x;
++            const float inverseDepth = depthPixels[i * 4] / 255.0f;
++            const float distance = m_sceneNear + (1.0f / (inverseDepth / m_sceneNear + (1.0f - inverseDepth) / m_sceneFar) - m_sceneNear) * m_sceneStrength;
++            distances[i] = distance;
++            m_roomGrid[i] = VenueVertex{{((static_cast<float>(x) / (m_roomWidth - 1) * 2.0f - 1.0f) * halfHeight * m_sceneAspect * distance),
++                ((1.0f - static_cast<float>(y) / (m_roomHeight - 1) * 2.0f) * halfHeight * distance), -distance},
++                {static_cast<float>(x) / (m_roomWidth - 1), static_cast<float>(y) / (m_roomHeight - 1)}};
++        }
++        stbi_image_free(depthPixels);
++        auto appendRoomTriangle = [&](size_t a, size_t b, size_t c) {
++            const float closest = std::min({distances[a], distances[b], distances[c]});
++            const float farthest = std::max({distances[a], distances[b], distances[c]});
++            if (farthest - closest > std::max(0.24f * m_sceneStrength, closest * 0.12f)) return;
++            roomVertices.push_back(m_roomGrid[a]); roomVertices.push_back(m_roomGrid[b]); roomVertices.push_back(m_roomGrid[c]);
++        };
++        for (uint32_t y = 0; y + 1 < m_roomHeight; ++y) for (uint32_t x = 0; x + 1 < m_roomWidth; ++x) {
++            const size_t a = static_cast<size_t>(y) * m_roomWidth + x;
++            appendRoomTriangle(a, a + m_roomWidth, a + 1);
++            appendRoomTriangle(a + 1, a + m_roomWidth, a + m_roomWidth + 1);
++        }
++        m_venueVertexCount = static_cast<GLsizei>(roomVertices.size());
++        glGenBuffers(1, &m_venueVertexBuffer); glBindBuffer(GL_ARRAY_BUFFER, m_venueVertexBuffer);
++        glBufferData(GL_ARRAY_BUFFER, roomVertices.size() * sizeof(VenueVertex), roomVertices.data(), GL_STATIC_DRAW);
++        m_venueTexture = LoadMintTexture("room.jpg", false);
++
++        const size_t actorCount = static_cast<size_t>(m_actorWidth) * m_actorHeight;
++        m_actorGrid.resize(actorCount);
++        for (uint32_t y = 0; y < m_actorHeight; ++y) for (uint32_t x = 0; x < m_actorWidth; ++x) {
++            const size_t i = static_cast<size_t>(y) * m_actorWidth + x;
++            m_actorGrid[i].uv[0] = static_cast<float>(x) / (m_actorWidth - 1);
++            m_actorGrid[i].uv[1] = static_cast<float>(y) / (m_actorHeight - 1);
++        }
++        glGenBuffers(1, &m_actorVertexBuffer); glBindBuffer(GL_ARRAY_BUFFER, m_actorVertexBuffer);
++        glBufferData(GL_ARRAY_BUFFER, actorCount * sizeof(VenueVertex), m_actorGrid.data(), GL_DYNAMIC_DRAW);
++        glGenBuffers(1, &m_actorIndexBuffer);
++        glGenTextures(1, &m_actorTexture);
++        m_tinTexture = LoadMintTexture("mint-tin.png", false);
++        BuildTinMesh();
++        m_mintSceneLoaded = true;
++        LoadMintHuman();
++        UpdateMintFrame(0.0f);
++        Log::Write(Log::Level::Info, Fmt("Loaded standalone Mint Toss scene (%d video frames, %d room triangles)", m_mintFrameCount, m_venueVertexCount / 3));
++    }
++
++    void UpdateMintFrame(float time) {
++        m_mintTime = time;
++        const float halfHeight = std::tan(m_sceneFov * 0.00872664626f);
++        const MintKeyframe* a = &m_tinFrames.front();
++        const MintKeyframe* b = a;
++        for (size_t i = 0; i + 1 < m_tinFrames.size(); ++i) {
++            if (m_tinFrames[i + 1].time > time) { a = &m_tinFrames[i]; b = &m_tinFrames[i + 1]; break; }
++            a = b = &m_tinFrames[i + 1];
++        }
++        const float blend = a == b ? 0.0f : std::clamp((time - a->time) / (b->time - a->time), 0.0f, 1.0f);
++        auto mix = [blend](float x, float y) { return x + (y - x) * blend; };
++        m_tinVisible = time >= m_tinFrames.front().time && (blend < 0.5f ? a->visible : b->visible);
++        m_tinPosition[0] = (mix(a->u, b->u) * 2.0f - 1.0f) * halfHeight * m_sceneAspect * mix(a->depth, b->depth);
++        m_tinPosition[1] = (1.0f - mix(a->v, b->v) * 2.0f) * halfHeight * mix(a->depth, b->depth);
++        m_tinPosition[2] = -mix(a->depth, b->depth);
++        m_tinUv[0] = mix(a->u, b->u); m_tinUv[1] = mix(a->v, b->v);
++        m_tinRotation[0] = mix(a->rx, b->rx); m_tinRotation[1] = mix(a->ry, b->ry); m_tinRotation[2] = mix(a->rz, b->rz);
++        auto frame = std::lower_bound(m_actorTimes.begin(), m_actorTimes.end(), time);
++        if (frame != m_actorTimes.begin() && frame != m_actorTimes.end() && time - *(frame - 1) < *frame - time) --frame;
++        const uint32_t frameIndex = std::min(static_cast<uint32_t>(frame - m_actorTimes.begin()), m_mintFrameCount - 1);
++        UpdateMintHumanFrame(time);
++        if (frameIndex != m_lastActorFrame) LoadMintActorFrame(frameIndex);
++    }
++
++    void LoadMintActorFrame(uint32_t frameIndex) {
++        const std::string stem = Fmt("%04d", static_cast<int>(frameIndex));
++        const std::string colorBytes = ReadAsset(("actor/color/" + stem + ".jpg").c_str());
++        const std::string alphaBytes = ReadAsset(("actor/alpha/" + stem + ".png").c_str());
++        const std::string depthBytes = ReadAsset(("actor/depth/" + stem + ".png").c_str());
++        int colorWidth = 0, colorHeight = 0, colorChannels = 0;
++        int alphaWidth = 0, alphaHeight = 0, alphaChannels = 0;
++        int depthWidth = 0, depthHeight = 0, depthChannels = 0;
++        unsigned char* colorPixels = stbi_load_from_memory(reinterpret_cast<const stbi_uc*>(colorBytes.data()), static_cast<int>(colorBytes.size()), &colorWidth, &colorHeight, &colorChannels, STBI_rgb_alpha);
++        unsigned char* alphaPixels = stbi_load_from_memory(reinterpret_cast<const stbi_uc*>(alphaBytes.data()), static_cast<int>(alphaBytes.size()), &alphaWidth, &alphaHeight, &alphaChannels, STBI_rgb_alpha);
++        unsigned char* depthPixels = stbi_load_from_memory(reinterpret_cast<const stbi_uc*>(depthBytes.data()), static_cast<int>(depthBytes.size()), &depthWidth, &depthHeight, &depthChannels, STBI_rgb_alpha);
++        if (!colorPixels || !alphaPixels || !depthPixels || colorWidth != static_cast<int>(m_actorWidth * 4) || colorHeight != static_cast<int>(m_actorHeight * 4) || alphaWidth != colorWidth || alphaHeight != colorHeight || depthWidth != static_cast<int>(m_actorWidth) || depthHeight != static_cast<int>(m_actorHeight)) {
++            if (colorPixels) stbi_image_free(colorPixels); if (alphaPixels) stbi_image_free(alphaPixels); if (depthPixels) stbi_image_free(depthPixels);
++            THROW(Fmt("Mint actor frame %u has invalid color or depth dimensions.", frameIndex));
++        }
++        for (int y = 0; y < colorHeight; ++y) for (int x = 0; x < colorWidth; ++x) {
++            const size_t colorIndex = (static_cast<size_t>(y) * colorWidth + x) * 4;
++            colorPixels[colorIndex + 3] = alphaPixels[colorIndex];
++        }
++        glBindTexture(GL_TEXTURE_2D, m_actorTexture);
++        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
++        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
++        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
++        if (!m_actorTextureInitialized) {
++            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, colorWidth, colorHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, colorPixels);
++            m_actorTextureInitialized = true;
++        } else {
++            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, colorWidth, colorHeight, GL_RGBA, GL_UNSIGNED_BYTE, colorPixels);
++        }
++        const float halfHeight = std::tan(m_sceneFov * 0.00872664626f);
++        std::array<uint32_t, 256> actorDepthHistogram{};
++        uint32_t actorDepthCount = 0;
++        for (size_t i = 0; i < static_cast<size_t>(m_actorWidth) * m_actorHeight; ++i) {
++            if (depthPixels[i * 4 + 3] < 128) continue;
++            ++actorDepthHistogram[depthPixels[i * 4]];
++            ++actorDepthCount;
++        }
++        auto actorDepthPercentile = [&](uint32_t percentile) {
++            const uint32_t target = actorDepthCount ? (actorDepthCount - 1) * percentile / 100 : 0;
++            uint32_t accumulated = 0;
++            for (uint32_t value = 0; value < actorDepthHistogram.size(); ++value) {
++                accumulated += actorDepthHistogram[value];
++                if (accumulated > target) return static_cast<float>(value);
++            }
++            return 128.0f;
++        };
++        const float actorDepthLow = actorDepthPercentile(5);
++        const float actorDepthRange = std::max(1.0f, actorDepthPercentile(95) - actorDepthLow);
++        for (uint32_t y = 0; y < m_actorHeight; ++y) for (uint32_t x = 0; x < m_actorWidth; ++x) {
++            const size_t i = static_cast<size_t>(y) * m_actorWidth + x;
++            const float localDepth = std::clamp((depthPixels[i * 4] - actorDepthLow) / actorDepthRange, 0.0f, 1.0f);
++            // Fit the photo appearance layer to this exact articulated pose.
++            // It sits 3.5cm in front of the H3D surface so the source silhouette
++            // stays crisp without replacing the volumetric body behind it.
++            const float separated = m_humanCenterDepth - 0.035f + (0.5f - localDepth) * m_humanDepthSpan;
++            const float u = static_cast<float>(x) / (m_actorWidth - 1);
++            const float v = static_cast<float>(y) / (m_actorHeight - 1);
++            m_actorGrid[i].position[0] = (u * 2.0f - 1.0f) * halfHeight * m_sceneAspect * separated;
++            m_actorGrid[i].position[1] = (1.0f - v * 2.0f) * halfHeight * separated;
++            m_actorGrid[i].position[2] = -separated;
++        }
++        m_actorIndices.clear();
++        const float mintDepth = std::max(0.2f, m_tinPosition[2] * -1.0f);
++        const float mintRadiusU = m_tinRadius / (2.0f * halfHeight * m_sceneAspect * mintDepth);
++        const float mintRadiusV = m_tinRadius / (2.0f * halfHeight * mintDepth);
++        auto included = [&](size_t i) {
++            if (depthPixels[i * 4 + 3] < 128) return false;
++            const float u = static_cast<float>(i % m_actorWidth) / (m_actorWidth - 1);
++            const float v = static_cast<float>(i / m_actorWidth) / (m_actorHeight - 1);
++            const float dx = (u - m_tinUv[0]) / mintRadiusU;
++            const float dy = (v - m_tinUv[1]) / mintRadiusV;
++            return !m_tinVisible || dx * dx + dy * dy > 1.0f;
++        };
++        auto append = [&](size_t a, size_t b, size_t c) {
++            if (!included(a) || !included(b) || !included(c)) return;
++            const float da = -m_actorGrid[a].position[2], db = -m_actorGrid[b].position[2], dc = -m_actorGrid[c].position[2];
++            const float closest = std::min({da, db, dc}), farthest = std::max({da, db, dc});
++            if (farthest - closest > std::max(0.24f * m_sceneStrength, closest * 0.12f)) return;
++            m_actorIndices.push_back(static_cast<uint32_t>(a)); m_actorIndices.push_back(static_cast<uint32_t>(b)); m_actorIndices.push_back(static_cast<uint32_t>(c));
++        };
++        for (uint32_t y = 0; y + 1 < m_actorHeight; ++y) for (uint32_t x = 0; x + 1 < m_actorWidth; ++x) {
++            const size_t a = static_cast<size_t>(y) * m_actorWidth + x;
++            append(a, a + m_actorWidth, a + 1); append(a + 1, a + m_actorWidth, a + m_actorWidth + 1);
++        }
++        glBindBuffer(GL_ARRAY_BUFFER, m_actorVertexBuffer);
++        glBufferSubData(GL_ARRAY_BUFFER, 0, m_actorGrid.size() * sizeof(VenueVertex), m_actorGrid.data());
++        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_actorIndexBuffer);
++        glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_actorIndices.size() * sizeof(uint32_t), m_actorIndices.data(), GL_DYNAMIC_DRAW);
++        stbi_image_free(colorPixels); stbi_image_free(alphaPixels); stbi_image_free(depthPixels);
++        m_lastActorFrame = frameIndex;
++    }
++
++    void DrawMintScene(const XrMatrix4x4f& vp) {
++        XrMatrix4x4f model, mvp;
++        XrVector3f unitScale{1.0f, 1.0f, 1.0f};
++        XrVector3f zeroPosition{0.0f, 0.0f, 0.0f};
++        XrQuaternionf identity{0.0f, 0.0f, 0.0f, 1.0f};
++        XrMatrix4x4f_CreateTranslationRotationScale(&model, &zeroPosition, &identity, &unitScale);
++        XrMatrix4x4f_Multiply(&mvp, &vp, &model);
++        glUniformMatrix4fv(m_modelViewProjectionUniformLocation, 1, GL_FALSE, reinterpret_cast<const GLfloat*>(&mvp));
++        glUniform1i(m_useVenueTextureUniform, 1);
++        glUniform1i(m_useActorMaskUniform, 0);
++        glActiveTexture(GL_TEXTURE0);
++        glBindVertexArray(m_vao);
++        glBindBuffer(GL_ARRAY_BUFFER, m_venueVertexBuffer);
++        glEnableVertexAttribArray(m_vertexAttribCoords); glEnableVertexAttribArray(m_vertexAttribUv);
++        glDisableVertexAttribArray(m_vertexAttribColor); glVertexAttrib3f(m_vertexAttribColor, 1, 1, 1);
++        glVertexAttribPointer(m_vertexAttribCoords, 3, GL_FLOAT, GL_FALSE, sizeof(VenueVertex), nullptr);
++        glVertexAttribPointer(m_vertexAttribUv, 2, GL_FLOAT, GL_FALSE, sizeof(VenueVertex), reinterpret_cast<const void*>(3 * sizeof(float)));
++        glBindTexture(GL_TEXTURE_2D, m_venueTexture);
++        glDisable(GL_CULL_FACE);
++        glDrawArrays(GL_TRIANGLES, 0, m_venueVertexCount);
++
++        if (m_humanLoaded && m_humanVisible && m_actorTexture) {
++            glUniform1i(m_useActorMaskUniform, 2);
++            glUniform1f(m_humanTanHalfFovUniform, std::tan(m_sceneFov * 0.00872664626f));
++            glUniform1f(m_humanAspectUniform, m_sceneAspect);
++            glActiveTexture(GL_TEXTURE0);
++            glBindTexture(GL_TEXTURE_2D, m_actorTexture);
++            glBindBuffer(GL_ARRAY_BUFFER, m_humanPositionBuffer);
++            glVertexAttribPointer(m_vertexAttribCoords, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), nullptr);
++            glEnableVertexAttribArray(m_vertexAttribColor);
++            glBindBuffer(GL_ARRAY_BUFFER, m_humanColorBuffer);
++            glVertexAttribPointer(m_vertexAttribColor, 3, GL_UNSIGNED_BYTE, GL_TRUE, 3, nullptr);
++            glEnableVertexAttribArray(m_vertexAttribNormal);
++            glBindBuffer(GL_ARRAY_BUFFER, m_humanNormalBuffer);
++            glVertexAttribPointer(m_vertexAttribNormal, 3, GL_BYTE, GL_TRUE, 3, nullptr);
++            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_humanIndexBuffer);
++            glDisable(GL_BLEND);
++            glDisable(GL_CULL_FACE);
++            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(m_humanIndexCount), GL_UNSIGNED_INT, nullptr);
++            glEnable(GL_CULL_FACE);
++            glUniform1i(m_useActorMaskUniform, 0);
++            glDisableVertexAttribArray(m_vertexAttribNormal);
++            glVertexAttrib3f(m_vertexAttribNormal, 0.0f, 0.0f, 1.0f);
++        }
++
++        // The 3D mesh carries volume and side/back appearance; this foreground
++        // layer restores the exact recorded silhouette and fine facial detail.
++        if (m_humanLoaded && m_humanVisible && m_actorTexture && !m_actorIndices.empty()) {
++            GLint previousDepthFunc = GL_LESS;
++            GLboolean previousDepthMask = GL_TRUE;
++            glGetIntegerv(GL_DEPTH_FUNC, &previousDepthFunc);
++            glGetBooleanv(GL_DEPTH_WRITEMASK, &previousDepthMask);
++            glDepthFunc(GL_ALWAYS);
++            glDepthMask(GL_FALSE);
++            glEnable(GL_BLEND); glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
++            glUniform1i(m_useActorMaskUniform, 1);
++            glBindBuffer(GL_ARRAY_BUFFER, m_actorVertexBuffer);
++            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_actorIndexBuffer);
++            glVertexAttribPointer(m_vertexAttribCoords, 3, GL_FLOAT, GL_FALSE, sizeof(VenueVertex), nullptr);
++            glVertexAttribPointer(m_vertexAttribUv, 2, GL_FLOAT, GL_FALSE, sizeof(VenueVertex), reinterpret_cast<const void*>(3 * sizeof(float)));
++            glBindTexture(GL_TEXTURE_2D, m_actorTexture);
++            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(m_actorIndices.size()), GL_UNSIGNED_INT, nullptr);
++            glDisable(GL_BLEND);
++            glUniform1i(m_useActorMaskUniform, 0);
++            glDepthFunc(previousDepthFunc);
++            glDepthMask(previousDepthMask);
++        } else if (!m_humanLoaded && m_actorTexture && !m_actorIndices.empty()) {
++            glEnable(GL_BLEND); glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
++            glUniform1i(m_useActorMaskUniform, 1);
++            glBindBuffer(GL_ARRAY_BUFFER, m_actorVertexBuffer);
++            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_actorIndexBuffer);
++            glVertexAttribPointer(m_vertexAttribCoords, 3, GL_FLOAT, GL_FALSE, sizeof(VenueVertex), nullptr);
++            glVertexAttribPointer(m_vertexAttribUv, 2, GL_FLOAT, GL_FALSE, sizeof(VenueVertex), reinterpret_cast<const void*>(3 * sizeof(float)));
++            glBindTexture(GL_TEXTURE_2D, m_actorTexture);
++            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(m_actorIndices.size()), GL_UNSIGNED_INT, nullptr);
++            glDisable(GL_BLEND);
++            glUniform1i(m_useActorMaskUniform, 0);
++        }
++
++        if (m_tinVisible && m_tinVertexCount > 0) {
++            const float x = 1.57079632679f + m_tinRotation[0], y = m_tinRotation[1], z = m_tinRotation[2];
++            const float cx = std::cos(x * 0.5f), sx = std::sin(x * 0.5f);
++            const float cy = std::cos(y * 0.5f), sy = std::sin(y * 0.5f);
++            const float cz = std::cos(z * 0.5f), sz = std::sin(z * 0.5f);
++            XrQuaternionf rotation{};
++            rotation.x = sx * cy * cz - cx * sy * sz;
++            rotation.y = cx * sy * cz + sx * cy * sz;
++            rotation.z = cx * cy * sz - sx * sy * cz;
++            rotation.w = cx * cy * cz + sx * sy * sz;
++            XrVector3f position{m_tinPosition[0], m_tinPosition[1], m_tinPosition[2]};
++            XrVector3f scale{m_tinRadius, m_tinThickness, m_tinRadius};
++            XrMatrix4x4f_CreateTranslationRotationScale(&model, &position, &rotation, &scale);
++            XrMatrix4x4f_Multiply(&mvp, &vp, &model);
++            glUniformMatrix4fv(m_modelViewProjectionUniformLocation, 1, GL_FALSE, reinterpret_cast<const GLfloat*>(&mvp));
++            glBindBuffer(GL_ARRAY_BUFFER, m_tinVertexBuffer);
++            glVertexAttribPointer(m_vertexAttribCoords, 3, GL_FLOAT, GL_FALSE, sizeof(VenueVertex), nullptr);
++            glVertexAttribPointer(m_vertexAttribUv, 2, GL_FLOAT, GL_FALSE, sizeof(VenueVertex), reinterpret_cast<const void*>(3 * sizeof(float)));
++            glBindTexture(GL_TEXTURE_2D, m_tinTexture);
++            glDrawArrays(GL_TRIANGLES, 0, m_tinVertexCount);
++        }
++        glEnable(GL_CULL_FACE);
++        glUniform1i(m_useVenueTextureUniform, 0);
++        glBindVertexArray(0);
++    }
+ 
+     std::string ReadAsset(const char* name) {
+         AAsset* asset = AAssetManager_open(gVenueAssetManager, name, AASSET_MODE_BUFFER);
+@@ -509,7 +1009,9 @@
+         }
+ 
+ #ifdef XR_USE_PLATFORM_ANDROID
+-        if (m_venueVertexCount > 0) {
++        if (m_mintSceneLoaded) {
++            DrawMintScene(vp);
++        } else if (m_venueVertexCount > 0) {
+             glBindBuffer(GL_ARRAY_BUFFER, m_venueVertexBuffer);
+             glEnableVertexAttribArray(m_vertexAttribCoords);
+             glEnableVertexAttribArray(m_vertexAttribUv);
+@@ -542,6 +1044,17 @@
+ 
+     void SetClearColor(const std::array<float, 4> clearColor) override { m_clearColor = clearColor; }
+ 
++    void SetPlaybackTime(XrTime predictedDisplayTime) override {
++#ifdef XR_USE_PLATFORM_ANDROID
++        if (!m_mintSceneLoaded || predictedDisplayTime <= 0) return;
++        if (m_playbackStartTime == 0) m_playbackStartTime = predictedDisplayTime;
++        const float elapsed = static_cast<float>(predictedDisplayTime - m_playbackStartTime) * 1e-9f;
++        UpdateMintFrame(std::fmod(std::max(0.0f, elapsed), m_sceneDuration));
++#else
++        UNUSED_PARM(predictedDisplayTime);
++#endif
++    }
++
+    private:
+ #ifdef XR_USE_PLATFORM_ANDROID
+     XrGraphicsBindingOpenGLESAndroidKHR m_graphicsBinding{XR_TYPE_GRAPHICS_BINDING_OPENGL_ES_ANDROID_KHR};
+@@ -554,8 +1067,11 @@
+     GLint m_vertexAttribCoords{0};
+     GLint m_vertexAttribColor{0};
+     GLint m_vertexAttribUv{-1};
++    GLint m_vertexAttribNormal{-1};
+     GLint m_venueTextureUniform{-1};
+     GLint m_useVenueTextureUniform{-1};
++    GLint m_useActorMaskUniform{-1};
++    GLint m_humanTanHalfFovUniform{-1}, m_humanAspectUniform{-1};
+     GLuint m_vao{0};
+     GLuint m_cubeVertexBuffer{0};
+     GLuint m_cubeIndexBuffer{0};
+@@ -563,6 +1079,37 @@
+     GLuint m_venueVertexBuffer{0};
+     GLuint m_venueTexture{0};
+     GLsizei m_venueVertexCount{0};
++    GLuint m_actorVertexBuffer{0};
++    GLuint m_actorIndexBuffer{0};
++    GLuint m_actorTexture{0};
++    GLuint m_humanPositionBuffer{0}, m_humanColorBuffer{0}, m_humanIndexBuffer{0}, m_humanNormalBuffer{0};
++    bool m_actorTextureInitialized{false};
++    GLuint m_tinVertexBuffer{0};
++    GLuint m_tinTexture{0};
++    GLsizei m_tinVertexCount{0};
++    uint32_t m_roomWidth{0}, m_roomHeight{0}, m_actorWidth{0}, m_actorHeight{0}, m_mintFrameCount{0};
++    uint32_t m_lastActorFrame{std::numeric_limits<uint32_t>::max()};
++    uint32_t m_humanVertexCount{0}, m_humanIndexCount{0}, m_humanFrameCount{0}, m_humanFps{0}, m_humanPositionScale{0}, m_humanNormalScale{0};
++    uint32_t m_lastHumanFrame{std::numeric_limits<uint32_t>::max()};
++    XrTime m_playbackStartTime{0};
++    bool m_mintSceneLoaded{false}, m_tinVisible{false}, m_humanLoaded{false}, m_humanVisible{false};
++    float m_sceneNear{2}, m_sceneFar{12}, m_sceneFov{60}, m_sceneStrength{1.25f}, m_sceneDuration{1}, m_sceneAspect{1};
++    float m_tinRadius{0.034f}, m_tinThickness{0.012f}, m_mintTime{0};
++    float m_humanFrameInterval{0}, m_humanStartTime{0};
++    float m_humanCenterDepth{3.0f}, m_humanDepthSpan{0.2f};
++    std::array<float, 3> m_tinPosition{};
++    std::array<float, 2> m_tinUv{};
++    std::array<float, 3> m_tinRotation{};
++    std::vector<VenueVertex> m_roomGrid, m_actorGrid;
++    std::vector<uint32_t> m_actorIndices;
++    std::vector<uint8_t> m_humanColors;
++    std::vector<uint32_t> m_humanIndices;
++    std::vector<float> m_humanPositions;
++    std::vector<int16_t> m_humanPackedFrame;
++    std::vector<int8_t> m_humanPackedNormals;
++    std::string m_humanFrameData;
++    std::vector<float> m_actorTimes;
++    std::vector<MintKeyframe> m_tinFrames;
+ #endif
+     GLint m_contextApiMajorVersion{0};
+     std::array<float, 4> m_clearColor;
+--- a/src/tests/hello_xr/openxr_program.cpp
++++ b/src/tests/hello_xr/openxr_program.cpp
+@@ -952,6 +952,7 @@
+         XrFrameWaitInfo frameWaitInfo{XR_TYPE_FRAME_WAIT_INFO};
+         XrFrameState frameState{XR_TYPE_FRAME_STATE};
+         CHECK_XRCMD(xrWaitFrame(m_session, &frameWaitInfo, &frameState));
++        m_graphicsPlugin->SetPlaybackTime(frameState.predictedDisplayTime);
+ 
+         XrFrameBeginInfo frameBeginInfo{XR_TYPE_FRAME_BEGIN_INFO};
+         CHECK_XRCMD(xrBeginFrame(m_session, &frameBeginInfo));

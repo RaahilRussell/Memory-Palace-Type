@@ -1,0 +1,631 @@
+{
+  "version": 1,
+  "scope": "Human-reviewed expected category presence across all 33 source photos; not an exhaustive instance count or detector accuracy guarantee.",
+  "source": "Original album contact sheets plus expanded original inspection of scenes 03,06,12,13,18,20,27,31. Reconciled with the testing chat source-only visual audit (.local/photo-scene-expected-coverage.json); 33 filename matches, source audit SHA-256 54f710d2e195f6aa961e33d0efc4fa27d2659f185970e76d98f67a8a8431df76.",
+  "annotationDate": "2026-10-24",
+  "items": [
+    {
+      "index": 1,
+      "filename": "PXL_20251101_012036342.jpg",
+      "expectedCategories": [
+        "round-table",
+        "chair",
+        "umbrella",
+        "building",
+        "column",
+        "window",
+        "door",
+        "sign",
+        "clothing",
+        "mask",
+        "sunglasses"
+      ],
+      "ambiguousOrUnreadable": [
+        "The folded red/blue textile is visible; precise garment type is unclear."
+      ],
+      "instanceCountStatus": "not-exhaustively-annotated"
+    },
+    {
+      "index": 2,
+      "filename": "PXL_20251101_012037909.jpg",
+      "expectedCategories": [
+        "round-table",
+        "chair",
+        "umbrella",
+        "phone",
+        "building",
+        "column",
+        "window",
+        "door",
+        "sign",
+        "clothing",
+        "plant"
+      ],
+      "ambiguousOrUnreadable": [],
+      "instanceCountStatus": "not-exhaustively-annotated"
+    },
+    {
+      "index": 3,
+      "filename": "PXL_20251101_012040684.jpg",
+      "expectedCategories": [
+        "round-table",
+        "chair",
+        "umbrella",
+        "phone",
+        "glasses",
+        "building",
+        "column",
+        "window",
+        "door",
+        "sign",
+        "clothing",
+        "plant"
+      ],
+      "ambiguousOrUnreadable": [
+        "Folded textile on the table is not independently typed."
+      ],
+      "instanceCountStatus": "not-exhaustively-annotated"
+    },
+    {
+      "index": 4,
+      "filename": "IMG_20251031_223231.heic",
+      "expectedCategories": [
+        "building",
+        "window",
+        "door",
+        "sign",
+        "clothing",
+        "shoe",
+        "glasses",
+        "book",
+        "fruit",
+        "mask",
+        "sunglasses",
+        "plant",
+        "chair"
+      ],
+      "ambiguousOrUnreadable": [
+        "Small accessories and distant storefront contents are not resolved."
+      ],
+      "instanceCountStatus": "not-exhaustively-annotated"
+    },
+    {
+      "index": 5,
+      "filename": "PXL_20251101_013747450.jpg",
+      "expectedCategories": [
+        "car",
+        "building",
+        "window",
+        "door",
+        "sign",
+        "plant",
+        "light"
+      ],
+      "ambiguousOrUnreadable": [
+        "Distant parked vehicles are class-visible; exact instances are not annotated."
+      ],
+      "instanceCountStatus": "not-exhaustively-annotated"
+    },
+    {
+      "index": 6,
+      "filename": "IMG_20251031_220110.jpg",
+      "expectedCategories": [
+        "sofa",
+        "cabinet",
+        "television",
+        "rug",
+        "pillow",
+        "blanket",
+        "fruit",
+        "food",
+        "food-container",
+        "candy",
+        "chip-bag",
+        "phone",
+        "cup",
+        "glass",
+        "box",
+        "suitcase",
+        "bag",
+        "glasses",
+        "hat",
+        "mask",
+        "clothing",
+        "power-outlet",
+        "cable",
+        "paper"
+      ],
+      "ambiguousOrUnreadable": [
+        "Small candy packets form a dense pile; exact brand/instance counts are not asserted.",
+        "Two round tan food items are visible; specific food type is uncertain."
+      ],
+      "instanceCountStatus": "not-exhaustively-annotated"
+    },
+    {
+      "index": 7,
+      "filename": "IMG_6449.jpg",
+      "expectedCategories": [
+        "football",
+        "clothing",
+        "shoe",
+        "light",
+        "building",
+        "door",
+        "sunglasses"
+      ],
+      "ambiguousOrUnreadable": [
+        "Tiny floor litter and distant accessories are unreadable."
+      ],
+      "instanceCountStatus": "not-exhaustively-annotated"
+    },
+    {
+      "index": 8,
+      "filename": "IMG_6450.jpg",
+      "expectedCategories": [
+        "football",
+        "clothing",
+        "shoe",
+        "light",
+        "building",
+        "door",
+        "sunglasses"
+      ],
+      "ambiguousOrUnreadable": [
+        "Tiny floor litter and distant accessories are unreadable."
+      ],
+      "instanceCountStatus": "not-exhaustively-annotated"
+    },
+    {
+      "index": 9,
+      "filename": "IMG_6451.jpg",
+      "expectedCategories": [
+        "football",
+        "clothing",
+        "shoe",
+        "light",
+        "building",
+        "door",
+        "sunglasses"
+      ],
+      "ambiguousOrUnreadable": [
+        "Tiny floor litter and distant accessories are unreadable."
+      ],
+      "instanceCountStatus": "not-exhaustively-annotated"
+    },
+    {
+      "index": 10,
+      "filename": "PXL_20261023_140805671.jpg",
+      "expectedCategories": [
+        "window",
+        "airplane",
+        "ground-vehicle",
+        "building"
+      ],
+      "ambiguousOrUnreadable": [
+        "Aircraft engine/wing are parts of the airplane, not separate inferred objects.",
+        "Far apron equipment is too small to subclass."
+      ],
+      "instanceCountStatus": "not-exhaustively-annotated"
+    },
+    {
+      "index": 11,
+      "filename": "PXL_20261023_140841549.MP.jpg",
+      "expectedCategories": [
+        "airplane",
+        "ground-vehicle",
+        "traffic-cone",
+        "building"
+      ],
+      "ambiguousOrUnreadable": [
+        "Distant aircraft and apron equipment instances are not exhaustively counted."
+      ],
+      "instanceCountStatus": "not-exhaustively-annotated"
+    },
+    {
+      "index": 12,
+      "filename": "PXL_20261023_192705585.MP.jpg",
+      "expectedCategories": [
+        "building",
+        "window",
+        "column",
+        "light",
+        "sign",
+        "chair",
+        "table",
+        "backpack",
+        "bag",
+        "clothing",
+        "shoe",
+        "hat",
+        "moving-walkway",
+        "suitcase",
+        "railing"
+      ],
+      "ambiguousOrUnreadable": [
+        "Distant baggage and gate display types are partly occluded."
+      ],
+      "instanceCountStatus": "not-exhaustively-annotated"
+    },
+    {
+      "index": 13,
+      "filename": "PXL_20261023_202210808.MP.jpg",
+      "expectedCategories": [
+        "building",
+        "window",
+        "door",
+        "sign",
+        "traffic-light",
+        "light",
+        "plant",
+        "car",
+        "bicycle",
+        "scooter",
+        "railing",
+        "column",
+        "sculpture",
+        "cable"
+      ],
+      "ambiguousOrUnreadable": [
+        "Distant street objects and overhead wire attachment points are not individually annotated."
+      ],
+      "instanceCountStatus": "not-exhaustively-annotated"
+    },
+    {
+      "index": 14,
+      "filename": "PXL_20261023_202328921.MP.jpg",
+      "expectedCategories": [
+        "building",
+        "window",
+        "door",
+        "plant",
+        "clothing",
+        "shoe",
+        "bag",
+        "backpack"
+      ],
+      "ambiguousOrUnreadable": [
+        "Small objects carried by distant pedestrians are unresolved."
+      ],
+      "instanceCountStatus": "not-exhaustively-annotated"
+    },
+    {
+      "index": 15,
+      "filename": "PXL_20261023_225404908.MP.jpg",
+      "expectedCategories": [
+        "table",
+        "chair",
+        "projector-screen",
+        "speaker",
+        "stage",
+        "sign",
+        "light",
+        "building",
+        "clothing",
+        "hat",
+        "backpack"
+      ],
+      "ambiguousOrUnreadable": [
+        "Crowded distant tables contain unresolved personal items."
+      ],
+      "instanceCountStatus": "not-exhaustively-annotated"
+    },
+    {
+      "index": 16,
+      "filename": "PXL_20261023_230520717.MP.jpg",
+      "expectedCategories": [
+        "table",
+        "chair",
+        "projector-screen",
+        "speaker",
+        "stage",
+        "sign",
+        "light",
+        "building",
+        "clothing",
+        "power-strip",
+        "cable"
+      ],
+      "ambiguousOrUnreadable": [
+        "Small equipment on the stage and distant tables is not typed."
+      ],
+      "instanceCountStatus": "not-exhaustively-annotated"
+    },
+    {
+      "index": 17,
+      "filename": "PXL_20261024_021506889.MP.jpg",
+      "expectedCategories": [
+        "laptop",
+        "table",
+        "sandwich",
+        "food-container",
+        "paper",
+        "bag",
+        "cable",
+        "charger",
+        "power-strip",
+        "box",
+        "clothing",
+        "food"
+      ],
+      "ambiguousOrUnreadable": [
+        "Partly occluded devices on the far table remain uncertain."
+      ],
+      "instanceCountStatus": "not-exhaustively-annotated"
+    },
+    {
+      "index": 18,
+      "filename": "PXL_20261024_021508267.jpg",
+      "expectedCategories": [
+        "laptop",
+        "table",
+        "chair",
+        "water-bottle",
+        "drink-can",
+        "food-container",
+        "paper",
+        "bag",
+        "cable",
+        "charger",
+        "power-strip",
+        "box",
+        "clothing",
+        "glasses",
+        "hat",
+        "lanyard",
+        "light",
+        "building",
+        "stairs",
+        "railing",
+        "food"
+      ],
+      "ambiguousOrUnreadable": [
+        "Tiny background objects are not individually resolved."
+      ],
+      "instanceCountStatus": "not-exhaustively-annotated"
+    },
+    {
+      "index": 19,
+      "filename": "PXL_20261024_061610389.MP.jpg",
+      "expectedCategories": [
+        "bridge",
+        "light"
+      ],
+      "ambiguousOrUnreadable": [
+        "Very dark image: nearby silhouettes and distant structures cannot be reliably typed."
+      ],
+      "instanceCountStatus": "not-exhaustively-annotated"
+    },
+    {
+      "index": 20,
+      "filename": "PXL_20261024_063934280.NIGHT.jpg",
+      "expectedCategories": [
+        "bridge",
+        "light",
+        "chair",
+        "clothing",
+        "bracelet",
+        "lanyard",
+        "plant",
+        "car"
+      ],
+      "ambiguousOrUnreadable": [
+        "Far cars/landscape are small and blurred; instance counts are unknown."
+      ],
+      "instanceCountStatus": "not-exhaustively-annotated"
+    },
+    {
+      "index": 21,
+      "filename": "PXL_20261024_064000147.NIGHT.jpg",
+      "expectedCategories": [
+        "bridge",
+        "light",
+        "chair",
+        "clothing",
+        "bracelet",
+        "plant"
+      ],
+      "ambiguousOrUnreadable": [
+        "Bright item near the face may be glow eyewear; precise accessory is uncertain."
+      ],
+      "instanceCountStatus": "not-exhaustively-annotated"
+    },
+    {
+      "index": 22,
+      "filename": "PXL_20261024_064740822.MP.jpg",
+      "expectedCategories": [
+        "bridge",
+        "light",
+        "clothing",
+        "bracelet"
+      ],
+      "ambiguousOrUnreadable": [
+        "Underexposed people and foreground objects have insufficient detail."
+      ],
+      "instanceCountStatus": "not-exhaustively-annotated"
+    },
+    {
+      "index": 23,
+      "filename": "PXL_20261024_065755783.MP.jpg",
+      "expectedCategories": [
+        "sign",
+        "light",
+        "clothing",
+        "shoe"
+      ],
+      "ambiguousOrUnreadable": [
+        "Motion blur prevents reliable small-object or carried-item classification."
+      ],
+      "instanceCountStatus": "not-exhaustively-annotated"
+    },
+    {
+      "index": 24,
+      "filename": "PXL_20261024_091317171.MP.jpg",
+      "expectedCategories": [
+        "clothing",
+        "lanyard",
+        "bracelet",
+        "light",
+        "building",
+        "chair"
+      ],
+      "ambiguousOrUnreadable": [
+        "Small background tabletop objects are not resolved."
+      ],
+      "instanceCountStatus": "not-exhaustively-annotated"
+    },
+    {
+      "index": 25,
+      "filename": "PXL_20261024_091414985.MP.jpg",
+      "expectedCategories": [
+        "clothing",
+        "lanyard",
+        "sunglasses",
+        "light",
+        "building",
+        "chair"
+      ],
+      "ambiguousOrUnreadable": [
+        "Small background tabletop objects are not resolved."
+      ],
+      "instanceCountStatus": "not-exhaustively-annotated"
+    },
+    {
+      "index": 26,
+      "filename": "PXL_20261024_110816046.MP.jpg",
+      "expectedCategories": [
+        "computer"
+      ],
+      "ambiguousOrUnreadable": [
+        "Photographed display: laptop versus standalone monitor is unresolved.",
+        "The onscreen human and furniture are depictions, not physical scene objects."
+      ],
+      "instanceCountStatus": "not-exhaustively-annotated"
+    },
+    {
+      "index": 27,
+      "filename": "PXL_20261024_152915607.jpg",
+      "expectedCategories": [
+        "building",
+        "column",
+        "door",
+        "railing",
+        "light",
+        "fan",
+        "table",
+        "chair",
+        "trash-bin",
+        "clothing",
+        "shoe",
+        "sign"
+      ],
+      "ambiguousOrUnreadable": [
+        "Small wall-mounted devices and far-table items are unresolved."
+      ],
+      "instanceCountStatus": "not-exhaustively-annotated"
+    },
+    {
+      "index": 28,
+      "filename": "PXL_20261024_154027441.MP.jpg",
+      "expectedCategories": [
+        "bagel",
+        "plate",
+        "paper"
+      ],
+      "ambiguousOrUnreadable": [
+        "Spreads are visible but not separately modeled or chemically identified."
+      ],
+      "instanceCountStatus": "not-exhaustively-annotated"
+    },
+    {
+      "index": 29,
+      "filename": "PXL_20261024_155307587.MP.jpg",
+      "expectedCategories": [
+        "projector-screen",
+        "table",
+        "chair",
+        "laptop",
+        "sign",
+        "light",
+        "building",
+        "clothing"
+      ],
+      "ambiguousOrUnreadable": [
+        "Distant tabletop containers, bags and devices are too small for confident individual typing."
+      ],
+      "instanceCountStatus": "not-exhaustively-annotated"
+    },
+    {
+      "index": 30,
+      "filename": "PXL_20261024_155610441.MP.jpg",
+      "expectedCategories": [
+        "table",
+        "chair",
+        "box",
+        "chip-bag",
+        "backpack"
+      ],
+      "ambiguousOrUnreadable": [
+        "Partially visible metal container at the top edge is not reliably a can versus cup."
+      ],
+      "instanceCountStatus": "not-exhaustively-annotated"
+    },
+    {
+      "index": 31,
+      "filename": "PXL_20261024_161451275.MP.jpg",
+      "expectedCategories": [
+        "table",
+        "box",
+        "mouse",
+        "egg",
+        "chip-bag",
+        "cable",
+        "phone",
+        "watch",
+        "clothing",
+        "shoe",
+        "food-container",
+        "chair"
+      ],
+      "ambiguousOrUnreadable": [
+        "Small packet contents/brands are not independent object categories."
+      ],
+      "instanceCountStatus": "not-exhaustively-annotated"
+    },
+    {
+      "index": 32,
+      "filename": "PXL_20261024_161452778.MP.jpg",
+      "expectedCategories": [
+        "phone",
+        "glasses",
+        "watch",
+        "clothing",
+        "chair",
+        "table",
+        "backpack",
+        "chip-bag",
+        "box",
+        "cable"
+      ],
+      "ambiguousOrUnreadable": [
+        "Partly hidden table items are not independently classified."
+      ],
+      "instanceCountStatus": "not-exhaustively-annotated"
+    },
+    {
+      "index": 33,
+      "filename": "PXL_20261024_161457526.MP.jpg",
+      "expectedCategories": [
+        "clothing",
+        "lanyard",
+        "chair",
+        "table",
+        "light",
+        "building"
+      ],
+      "ambiguousOrUnreadable": [
+        "Small background bottles/devices remain uncertain at this review scale."
+      ],
+      "instanceCountStatus": "not-exhaustively-annotated"
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#efe9df" />
+    <meta name="description" content="A sunlit space for the moments you want to keep. An immersive memory room for Meta Quest and the web." />
+    <title>Memory Palace — a place for your memories</title>
+  </head>
+  <body>
+    <div id="scene" aria-label="An immersive room of floating photographs"></div>
+    <div class="grain" aria-hidden="true"></div>
+    <div class="vignette" aria-hidden="true"></div>
+    <header>
+      <div class="utilities">
+        <button id="motion" class="utility" aria-pressed="true"><span class="orbit-icon">◌</span><span>Drift on</span></button>
+        <button id="sound" class="utility" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 10v4h4l5 4V6l-5 4H4Z"/><path d="m17 9 5 6m0-6-5 6"/></svg><span>Sound off</span></button>
+      </div>
+    </header>
+    <main aria-label="Memory room">
+      <h1 class="sr-only">Memory Palace memory room</h1>
+      <div id="portal-hint" class="portal-hint" aria-hidden="true">Open <span aria-hidden="true">↗</span></div>
+    </main>
+    <footer>
+      <button id="upload" class="add-button"><span aria-hidden="true">+</span> Add moments</button>
+      <span id="memory-count" hidden>29</span>
+      <button id="enter-vr" class="vr-button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 7h16l2 9a2 2 0 0 1-2 2h-4l-4-3-4 3H4a2 2 0 0 1-2-2l2-9Z"/><circle cx="7" cy="12" r="2"/><circle cx="17" cy="12" r="2"/></svg><span>Enter the room</span><span class="button-arrow">↗</span></button>
+    </footer>
+    <div id="memory-caption" hidden><button id="step-inside" hidden>Step inside <span aria-hidden="true">↗</span></button><button id="close-memory">Return to the room <span aria-hidden="true">↙</span></button></div>
+    <div id="toast" role="status"></div>
+    <div id="loading"><span class="brand-mark">✳</span><span>Loading memories…</span></div>
+    <script type="module" src="/src/palace/main.js"></script>
+  </body>
+</html>
